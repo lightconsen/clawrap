@@ -106,7 +106,34 @@ export class ConfigManager {
         'alibaba': 'bailian',
         'tencent': 'tencent',
         'baidu': 'baidu',
-        'bytedance': 'bytedance'
+        'bytedance': 'bytedance',
+        'xai': 'xai',
+        'mistral': 'mistral',
+        'moonshot': 'moonshot',
+        'minimax': 'minimax',
+        'ollama': 'ollama',
+        'openrouter': 'openrouter',
+        'together': 'together',
+        'sglang': 'sglang',
+        'vllm': 'vllm',
+        'litellm': 'litellm',
+        'huggingface': 'huggingface',
+        'vercel': 'vercel',
+        'cloudflare': 'cloudflare',
+        'kilo': 'kilo',
+        'byteplus': 'byteplus',
+        'chutes': 'chutes',
+        'copilot': 'copilot',
+        'kimi': 'kimi',
+        'opencode': 'opencode',
+        'qianfan': 'qianfan',
+        'alibaba-cloud': 'bailian',
+        'venice': 'venice',
+        'volcano': 'volcano',
+        'xiaomi': 'xiaomi',
+        'zai': 'zai',
+        'synthetic': 'synthetic',
+        'custom': 'custom'
       };
 
       const openclawProvider = providerMapping[model.provider] || model.provider;
@@ -145,7 +172,21 @@ export class ConfigManager {
       const baseUrls: Record<string, string> = {
         'deepseek': 'https://api.deepseek.com/v1',
         'alibaba': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        'bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+        'bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        'moonshot': 'https://api.moonshot.cn/v1',
+        'minimax': 'https://api.minimax.chat/v1',
+        'ollama': 'http://localhost:11434/v1',
+        'openrouter': 'https://openrouter.ai/api/v1',
+        'together': 'https://api.together.xyz/v1',
+        'sglang': 'http://localhost:30000/v1',
+        'vllm': 'http://localhost:8000/v1',
+        'litellm': 'http://localhost:4000/v1',
+        'mistral': 'https://api.mistral.ai/v1',
+        'xai': 'https://api.x.ai/v1',
+        'venice': 'https://api.venice.ai/v1',
+        'volcano': 'https://ark.cn-beijing.volces.com/api/v3',
+        'baidu': 'https://qianfan.baidubce.com/v2',
+        'qianfan': 'https://qianfan.baidubce.com/v2'
       };
 
       if (baseUrls[openclawProvider]) {
