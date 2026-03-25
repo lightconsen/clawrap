@@ -29,6 +29,17 @@ class OpenClawApp {
 
     await app.whenReady();
 
+    // Set app icon for macOS dock
+    if (process.platform === 'darwin' && app.dock) {
+      const iconPath = this.getIconPath();
+      try {
+        app.dock.setIcon(iconPath);
+        log.info('Set dock icon:', iconPath);
+      } catch (error) {
+        log.warn('Failed to set dock icon:', error);
+      }
+    }
+
     // Initialize config
     await this.configManager.initialize();
 
