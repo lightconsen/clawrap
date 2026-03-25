@@ -11,7 +11,11 @@ node_modules/
 
 # Gateway binaries (large files)
 resources/gateway/*
+resources/node/
 !resources/gateway/.gitkeep
+
+# Empty workspace file (not used)
+pnpm-workspace.yaml
 
 # IDE
 .idea/
