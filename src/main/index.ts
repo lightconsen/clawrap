@@ -297,11 +297,30 @@ class OpenClawApp {
 
     // Load the terminal UI
     const terminalHtmlPath = path.join(__dirname, '../renderer/terminal/index.html');
-    await this.mainWindow.loadFile(terminalHtmlPath);
+    log.info(`Loading terminal from: ${terminalHtmlPath}`);
+
+    try {
+      await this.mainWindow.loadFile(terminalHtmlPath);
+      log.info('Terminal HTML loaded successfully');
+    } catch (error) {
+      log.error('Failed to load terminal HTML:', error);
+      // Try to show window anyway
+      this.mainWindow.show();
+      return;
+    }
 
     this.mainWindow.once('ready-to-show', () => {
+      log.info('Main window ready to show');
       this.mainWindow?.show();
     });
+
+    // Fallback: show window after a timeout even if ready-to-show didn't fire
+    setTimeout(() => {
+      if (this.mainWindow && !this.mainWindow.isVisible()) {
+        log.info('Showing window via timeout fallback');
+        this.mainWindow.show();
+      }
+    }, 2000);
 
     if (isDev) {
       this.mainWindow.webContents.openDevTools();
@@ -495,6 +514,14 @@ class OpenClawApp {
             }
           },
           {
+            label: 'Stop Gateway',
+            click: async () => {
+              await this.gatewayManager.stop();
+              log.info('Gateway stopped manually');
+            }
+          },
+          { type: 'separator' },
+          {
             label: 'View Gateway Status',
             click: () => {
               const status = this.gatewayManager.getStatus();
@@ -533,9 +560,8 @@ class OpenClawApp {
   }
 
   private handleWindowAllClosed(): void {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    // Quit app when all windows are closed (on all platforms)
+    app.quit();
   }
 
   private async handleActivate(): Promise<void> {
@@ -550,8 +576,9 @@ class OpenClawApp {
   }
 
   private async handleBeforeQuit(): Promise<void> {
-    log.info('Shutting down...');
-    await this.gatewayManager.stop();
+    log.info('App quitting - gateway will continue running in background');
+    // Note: We intentionally do NOT stop the gateway here
+    // The gateway continues running after the app closes
   }
 }
 

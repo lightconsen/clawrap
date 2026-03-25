@@ -19,6 +19,7 @@ export class GatewayManager {
   private standaloneBinaryPath: string | null = null;
   private useBundledNode: boolean = false;
   private useStandaloneBinary: boolean = false;
+  private externalGatewayDetected: boolean = false;
 
   constructor() {
     this.detectStandaloneBinary();
@@ -237,16 +238,26 @@ export class GatewayManager {
   }
 
   getStatus(): GatewayStatus {
-    if (!this.gatewayProcess) {
-      return { running: false };
+    // If we started the gateway ourselves
+    if (this.gatewayProcess) {
+      return {
+        running: !this.gatewayProcess.killed,
+        port: this.gatewayPort,
+        pid: this.gatewayProcess.pid,
+        token: this.gatewayToken || undefined
+      };
     }
 
-    return {
-      running: !this.gatewayProcess.killed,
-      port: this.gatewayPort,
-      pid: this.gatewayProcess.pid,
-      token: this.gatewayToken || undefined
-    };
+    // If we detected an external gateway
+    if (this.externalGatewayDetected) {
+      return {
+        running: true,
+        port: this.gatewayPort,
+        token: this.gatewayToken || undefined
+      };
+    }
+
+    return { running: false };
   }
 
   /**
@@ -430,11 +441,47 @@ export class GatewayManager {
   }
 
   /**
+   * Check if gateway is already running by probing the port
+   */
+  async probeExistingGateway(): Promise<{ running: boolean; port?: number; token?: string }> {
+    const portsToCheck = [18789, 18790, 18791, 9090, this.gatewayPort];
+
+    for (const port of portsToCheck) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+        if (response.ok) {
+          log.info(`Found existing gateway running on port ${port}`);
+          this.externalGatewayDetected = true;
+          this.gatewayPort = port;
+          return { running: true, port, token: this.gatewayToken || undefined };
+        }
+      } catch {
+        // Port not responding, try next
+      }
+    }
+
+    this.externalGatewayDetected = false;
+    return { running: false };
+  }
+
+  /**
    * Start the OpenClaw gateway
    */
   async start(): Promise<number> {
     if (this.gatewayProcess && !this.gatewayProcess.killed) {
-      log.info('Gateway already running');
+      log.info('Gateway already running (tracked)');
+      return this.gatewayPort;
+    }
+
+    // Check if gateway is already running externally
+    const existing = await this.probeExistingGateway();
+    if (existing.running && existing.port) {
+      log.info(`Using existing gateway on port ${existing.port}`);
+      this.externalGatewayDetected = true;
+      this.gatewayPort = existing.port;
+      if (existing.token) {
+        this.gatewayToken = existing.token;
+      }
       return this.gatewayPort;
     }
 
@@ -482,6 +529,7 @@ export class GatewayManager {
 
       let startupOutput = '';
       let hasStarted = false;
+      let alreadyRunningDetected = false;
 
       this.gatewayProcess.stdout?.on('data', (data: Buffer) => {
         const output = data.toString();
@@ -501,7 +549,29 @@ export class GatewayManager {
       });
 
       this.gatewayProcess.stderr?.on('data', (data: Buffer) => {
-        log.error('[OpenClaw Error]', data.toString().trim());
+        const output = data.toString().trim();
+        log.error('[OpenClaw Error]', output);
+
+        // Detect if gateway is already running
+        if (output.includes('already running') || output.includes('launchd')) {
+          alreadyRunningDetected = true;
+          log.info('Detected existing gateway from stderr, will probe for it');
+
+          // Give the existing gateway a moment to be fully ready, then probe
+          setTimeout(async () => {
+            const existing = await this.probeExistingGateway();
+            if (existing.running && existing.port) {
+              log.info(`Connected to existing gateway on port ${existing.port}`);
+              this.gatewayPort = existing.port;
+              this.externalGatewayDetected = true;
+              if (existing.token) {
+                this.gatewayToken = existing.token;
+              }
+              hasStarted = true;
+              resolve(this.gatewayPort);
+            }
+          }, 3000);
+        }
       });
 
       this.gatewayProcess.on('error', (error) => {
@@ -510,7 +580,7 @@ export class GatewayManager {
 
       this.gatewayProcess.on('exit', (code) => {
         this.gatewayProcess = null;
-        if (!hasStarted) {
+        if (!hasStarted && !alreadyRunningDetected) {
           reject(new Error(`Gateway failed to start. Exit code: ${code}`));
         }
       });
