@@ -1,0 +1,33 @@
+version: "1.0"
+settings:
+  gateway:
+    port: 0  # Auto-assign
+    host: "127.0.0.1"
+
+  skills:
+    enabled:
+      - "everything-claude-code:plan"
+      - "everything-claude-code:tdd"
+      - "everything-claude-code:e2e"
+      - "everything-claude-code:python-review"
+      - "everything-claude-code:go-review"
+      - "everything-claude-code:security-reviewer"
+      - "everything-claude-code:database-reviewer"
+      - "everything-claude-code:refactor-cleaner"
+
+  tools:
+    enabled:
+      - "Read"
+      - "Write"
+      - "Edit"
+      - "Bash"
+      - "Grep"
+      - "Glob"
+      - "Task"
+      - "LSP"
+
+  bypass_channels:
+    - type: "claude_code"
+      enabled: true
+
+  model: null  # User must configure on first run

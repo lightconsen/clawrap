@@ -1,0 +1,23 @@
+{
+  "name": "openclaw-standalone",
+  "version": "2026.3.24",
+  "description": "OpenClaw standalone binary",
+  "main": "index.js",
+  "bin": "index.js",
+  "pkg": {
+    "scripts": [
+      "node_modules/openclaw/dist/**/*.js"
+    ],
+    "assets": [
+      "node_modules/openclaw/dist/**/*",
+      "node_modules/openclaw/node_modules/**/package.json"
+    ],
+    "targets": [
+      "node18-macos-arm64"
+    ],
+    "outputPath": "binaries"
+  },
+  "dependencies": {
+    "openclaw": "^2026.3.23-2"
+  }
+}

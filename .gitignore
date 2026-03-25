@@ -1,0 +1,23 @@
+# OpenClaw Desktop
+
+build/
+dist/
+release/
+node_modules/
+*.log
+.DS_Store
+.env
+.env.local
+
+# Gateway binaries (large files)
+resources/gateway/*
+!resources/gateway/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db

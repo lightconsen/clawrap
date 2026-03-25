@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Setup</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Step 1: Welcome -->
+    <div id="step-welcome" class="step active">
+      <div class="header">
+        <h1>Welcome to OpenClaw</h1>
+        <p class="subtitle">Your AI-powered development assistant</p>
+      </div>
+
+      <div class="content">
+        <div class="icon">🚀</div>
+        <p>OpenClaw combines the power of modern AI models with professional development tools.</p>
+        <ul class="features">
+          <li>Multi-model support (Claude, GPT, Gemini, DeepSeek, Qwen, and more)</li>
+          <li>Integrated terminal with AI assistance</li>
+          <li>Pre-configured with best-practice skills and tools</li>
+          <li>Local gateway for privacy and speed</li>
+        </ul>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="nextStep()">Get Started</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Model Selection -->
+    <div id="step-model" class="step">
+      <div class="header">
+        <h1>Choose Your AI Model</h1>
+        <p class="subtitle">Select the model you want to use</p>
+      </div>
+
+      <div class="content">
+        <div class="model-section">
+          <h3>🌍 International Models</h3>
+          <div class="model-list" id="international-models">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <div class="model-section">
+          <h3>🇨🇳 China Models</h3>
+          <div class="model-list" id="china-models">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <div class="model-custom" id="custom-model-section" style="display: none;">
+          <h3>Custom Model Configuration</h3>
+          <div class="form-group">
+            <label for="custom-model-id">Model ID</label>
+            <input type="text" id="custom-model-id" placeholder="e.g., my-custom-model">
+          </div>
+          <div class="form-group">
+            <label for="custom-base-url">Base URL (optional)</label>
+            <input type="text" id="custom-base-url" placeholder="https://api.example.com/v1">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="prevStep()">Back</button>
+        <button class="btn btn-primary" onclick="nextStep()" id="btn-model-next" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 3: API Key -->
+    <div id="step-apikey" class="step">
+      <div class="header">
+        <h1>Enter API Key</h1>
+        <p class="subtitle">Your API key is stored locally on your device</p>
+      </div>
+
+      <div class="content">
+        <div class="selected-model" id="selected-model-display">
+          <span class="model-label">Selected Model:</span>
+          <span class="model-name" id="selected-model-name">-</span>
+        </div>
+
+        <div class="form-group">
+          <label for="api-key">API Key</label>
+          <div class="input-group">
+            <input type="password" id="api-key" placeholder="Enter your API key">
+            <button class="btn-icon" onclick="togglePasswordVisibility()" title="Show/Hide">👁</button>
+          </div>
+          <p class="help-text" id="api-key-help">
+            Your API key will be stored securely on your local machine.
+          </p>
+        </div>
+
+        <div class="provider-links" id="provider-links">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="prevStep()">Back</button>
+        <button class="btn btn-primary" onclick="nextStep()" id="btn-apikey-next" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div id="step-confirm" class="step">
+      <div class="header">
+        <h1>Ready to Go!</h1>
+        <p class="subtitle">Review your configuration</p>
+      </div>
+
+      <div class="content">
+        <div class="summary">
+          <div class="summary-item">
+            <span class="label">Model:</span>
+            <span class="value" id="confirm-model">-</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Provider:</span>
+            <span class="value" id="confirm-provider">-</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">API Key:</span>
+            <span class="value" id="confirm-apikey">••••••••</span>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <p>✅ OpenClaw gateway will start automatically</p>
+          <p>✅ Pre-configured skills and tools are ready</p>
+          <p>✅ You can change settings later in the app</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="prevStep()">Back</button>
+        <button class="btn btn-primary" onclick="completeSetup()" id="btn-launch">
+          Launch OpenClaw
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="setup.js"></script>
+</body>
+</html>

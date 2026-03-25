@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install OpenClaw</title>
+  <link rel="stylesheet" href="install.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Install OpenClaw</h1>
+      <p class="subtitle">Setting up your AI assistant</p>
+    </div>
+
+    <div class="content">
+      <!-- Initial State: Check -->
+      <div id="state-check" class="state active">
+        <div class="spinner"></div>
+        <p>Checking for OpenClaw installation...</p>
+      </div>
+
+      <!-- Not Installed State -->
+      <div id="state-not-installed" class="state">
+        <div class="icon">📦</div>
+        <h2>OpenClaw Not Found</h2>
+        <p>OpenClaw needs to be installed to use this application.</p>
+        <div class="info-box">
+          <p>This will install:</p>
+          <ul>
+            <li>OpenClaw CLI and Gateway</li>
+            <li>Node.js dependencies</li>
+            <li>~100MB download</li>
+          </ul>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="cancelInstall()">Cancel</button>
+          <button class="btn btn-primary" onclick="startInstall()">Install OpenClaw</button>
+        </div>
+      </div>
+
+      <!-- Installing State -->
+      <div id="state-installing" class="state">
+        <div class="spinner large"></div>
+        <h2>Installing OpenClaw...</h2>
+        <p>This may take a few minutes depending on your connection.</p>
+        <div class="progress-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p class="status-text" id="install-status">Downloading...</p>
+        <div class="log-output" id="install-log"></div>
+      </div>
+
+      <!-- Install Error State -->
+      <div id="state-error" class="state">
+        <div class="icon error">❌</div>
+        <h2>Installation Failed</h2>
+        <p id="error-message">Something went wrong during installation.</p>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="cancelInstall()">Cancel</button>
+          <button class="btn btn-primary" onclick="retryInstall()">Try Again</button>
+        </div>
+      </div>
+
+      <!-- Install Success State -->
+      <div id="state-success" class="state">
+        <div class="icon success">✅</div>
+        <h2>Installation Complete!</h2>
+        <p>OpenClaw has been successfully installed.</p>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="continueToSetup()">Continue</button>
+        </div>
+      </div>
+
+      <!-- Manual Install Instructions -->
+      <div id="state-manual" class="state">
+        <div class="icon">🔧</div>
+        <h2>Manual Installation Required</h2>
+        <p>Automatic installation failed. Please install manually:</p>
+        <div class="code-block">
+          <code>npm install -g openclaw@latest</code>
+          <button class="btn-copy" onclick="copyCommand()">Copy</button>
+        </div>
+        <p class="help-text">After installing, click "Check Again" below.</p>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="cancelInstall()">Cancel</button>
+          <button class="btn btn-primary" onclick="checkAgain()">Check Again</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="#" onclick="openDocs()">Documentation</a>
+      <span class="separator">•</span>
+      <a href="#" onclick="openIssues()">Get Help</a>
+    </div>
+  </div>
+
+  <script src="install.js"></script>
+</body>
+</html>

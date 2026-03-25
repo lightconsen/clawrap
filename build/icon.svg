@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="url(#bg)"/>
+
+  <!-- Terminal window -->
+  <rect x="64" y="64" width="384" height="320" rx="16" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+
+  <!-- Window controls -->
+  <circle cx="96" cy="96" r="8" fill="#ff5f56"/>
+  <circle cx="120" cy="96" r="8" fill="#ffbd2e"/>
+  <circle cx="144" cy="96" r="8" fill="#27ca40"/>
+
+  <!-- Terminal content lines -->
+  <rect x="88" y="136" width="200" height="12" rx="2" fill="#238636" opacity="0.8"/>
+  <rect x="88" y="160" width="280" height="8" rx="2" fill="#8b949e" opacity="0.6"/>
+  <rect x="88" y="180" width="240" height="8" rx="2" fill="#8b949e" opacity="0.6"/>
+  <rect x="88" y="200" width="180" height="8" rx="2" fill="#8b949e" opacity="0.6"/>
+
+  <!-- Prompt -->
+  <text x="88" y="256" font-family="monospace" font-size="20" fill="#22c55e">$</text>
+  <rect x="112" y="242" width="12" height="20" fill="#22c55e">
+    <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Claw/AI symbol -->
+  <path d="M256 320 L200 420 L312 420 Z" fill="url(#accent)" opacity="0.9"/>
+  <circle cx="256" cy="380" r="24" fill="#fff"/>
+  <circle cx="256" cy="380" r="12" fill="#1a1a2e"/>
+
+  <!-- Circuit lines -->
+  <path d="M380 400 L420 400 L420 440" stroke="#22c55e" stroke-width="3" fill="none" opacity="0.6"/>
+  <path d="M400 380 L440 380 L440 420" stroke="#22c55e" stroke-width="3" fill="none" opacity="0.4"/>
+  <circle cx="420" cy="440" r="4" fill="#22c55e"/>
+  <circle cx="440" cy="420" r="4" fill="#22c55e" opacity="0.6"/>
+</svg>
