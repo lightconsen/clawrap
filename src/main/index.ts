@@ -212,10 +212,6 @@ class OpenClawApp {
       await this.setupWindow.loadFile(setupHtmlPath);
       log.info('Setup window loaded successfully');
 
-      if (isDev) {
-        this.setupWindow.webContents.openDevTools();
-      }
-
       this.setupWindow.on('closed', () => {
         this.setupWindow = null;
         // If setup was cancelled (no main window and setup not completed), quit app
@@ -247,10 +243,6 @@ class OpenClawApp {
 
     const installHtmlPath = path.join(__dirname, '../renderer/install/index.html');
     await this.installWindow.loadFile(installHtmlPath);
-
-    if (isDev) {
-      this.installWindow.webContents.openDevTools();
-    }
 
     this.installWindow.on('closed', () => {
       this.installWindow = null;
@@ -321,10 +313,6 @@ class OpenClawApp {
         this.mainWindow.show();
       }
     }, 2000);
-
-    if (isDev) {
-      this.mainWindow.webContents.openDevTools();
-    }
 
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
