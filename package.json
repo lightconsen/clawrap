@@ -11,7 +11,7 @@
     "url": "https://github.com/openclaw/openclaw.git"
   },
   "scripts": {
-    "dev": "NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html dist/renderer/terminal/ 2>/dev/null; NODE_ENV=development electron .",
+    "dev": "NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html src/renderer/terminal/*.ico dist/renderer/terminal/ 2>/dev/null; NODE_ENV=development electron .",
     "build:ts": "tsc && tsc -p tsconfig.renderer.json",
     "build": "npm run build:ts && electron-builder",
     "build:mac": "npm run build:ts && electron-builder --mac",
@@ -19,7 +19,13 @@
     "build:linux": "npm run build:ts && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps",
     "build:openclaw": "bash scripts/build-standalone.sh",
-    "download-node": "bash scripts/download-node.sh"
+    "download-node": "bash scripts/download-node.sh",
+    "remove:gateway": "openclaw gateway stop 2>/dev/null; openclaw gateway uninstall 2>/dev/null; echo 'OpenClaw gateway service stopped/uninstalled'",
+    "remove:openclaw": "npm uninstall -g openclaw 2>/dev/null; pnpm uninstall -g openclaw 2>/dev/null; echo 'OpenClaw npm package removed'",
+    "remove:data": "read -p 'Remove all OpenClaw data (~/.openclaw)? [y/N] ' confirm && [ \"$confirm\" = \"y\" ] && rm -rf ~/.openclaw && echo 'OpenClaw data removed' || echo 'Skipped data removal'",
+    "remove:config": "rm -rf ~/Library/Application\\ Support/OpenClaw && echo 'Electron config removed'",
+    "clean": "rm -rf dist release node_modules/.cache",
+    "remove:all": "npm run remove:gateway && npm run remove:openclaw && npm run remove:data && npm run remove:config && npm run clean && echo 'Full removal complete'"
   },
   "dependencies": {
     "electron-log": "^5.0.0",

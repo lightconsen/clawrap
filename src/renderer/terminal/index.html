@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src http://127.0.0.1:*;">
   <title>OpenClaw Terminal</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <style>
     * {
       margin: 0;
@@ -159,10 +161,22 @@
     const errorMessageEl = document.getElementById('error-message');
     const gatewayStatusEl = document.getElementById('gateway-status');
 
+    let currentToken = null;
+    let isFrameLoaded = false;
+
     async function initializeTerminal() {
       try {
-        // Check gateway status
-        const status = await window.electronAPI.getGatewayStatus();
+        // Check gateway status with retry for token
+        let status = await window.electronAPI.getGatewayStatus();
+        let retryCount = 0;
+        const maxRetries = 20;
+
+        // Retry until gateway is running
+        while (!status.running && retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          status = await window.electronAPI.getGatewayStatus();
+          retryCount++;
+        }
 
         if (!status.running) {
           throw new Error('Gateway is not running');
@@ -170,27 +184,63 @@
 
         gatewayPort = status.port || gatewayPort;
 
-        // Load the OpenClaw terminal
-        // This URL would be the actual OpenClaw web terminal served by the gateway
-        const terminalUrl = `http://127.0.0.1:${gatewayPort}/terminal`;
-
-        // For now, we'll show a placeholder that simulates the terminal
-        // In a real implementation, this would load the actual OpenClaw web UI
-        terminalFrame.src = terminalUrl;
-
-        terminalFrame.onload = () => {
-          loadingEl.style.display = 'none';
-          terminalFrame.style.display = 'block';
-          gatewayStatusEl.textContent = `Gateway running on port ${gatewayPort}`;
-        };
-
-        terminalFrame.onerror = () => {
-          showError('Failed to load terminal interface');
-        };
+        // Keep checking for token and reload iframe when token becomes available
+        await loadTerminalWithToken(status.token);
 
       } catch (error) {
         showError(error.message);
       }
+    }
+
+    async function loadTerminalWithToken(initialToken) {
+      // Build the terminal URL
+      // Use root path '/' so relative URLs in the gateway UI resolve correctly
+      let terminalUrl = `http://127.0.0.1:${gatewayPort}/`;
+
+      // Add token as query parameter if available
+      const token = initialToken || window.__OPENCLAW_GATEWAY_TOKEN__;
+      if (token) {
+        terminalUrl += `?token=${encodeURIComponent(token)}`;
+        currentToken = token;
+        console.log('Using gateway token for authentication');
+      } else {
+        console.warn('No gateway token available - waiting for token...');
+        // Keep checking for token
+        checkForTokenAndReload();
+      }
+
+      // Load the OpenClaw terminal
+      if (!isFrameLoaded || token !== currentToken) {
+        terminalFrame.src = terminalUrl;
+        isFrameLoaded = true;
+      }
+
+      terminalFrame.onload = () => {
+        loadingEl.style.display = 'none';
+        terminalFrame.style.display = 'block';
+        gatewayStatusEl.textContent = `Gateway running on port ${gatewayPort}`;
+      };
+
+      terminalFrame.onerror = () => {
+        showError('Failed to load terminal interface');
+      };
+    }
+
+    async function checkForTokenAndReload() {
+      // Check every 1 second for up to 30 seconds
+      for (let i = 0; i < 30; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const status = await window.electronAPI.getGatewayStatus();
+
+        if (status.token && status.token !== currentToken) {
+          console.log('Token now available, reloading terminal with authentication');
+          currentToken = status.token;
+          const terminalUrl = `http://127.0.0.1:${gatewayPort}/?token=${encodeURIComponent(status.token)}`;
+          terminalFrame.src = terminalUrl;
+          return;
+        }
+      }
+      console.warn('Token not available after 30 seconds - terminal may show unauthorized error');
     }
 
     function showError(message) {

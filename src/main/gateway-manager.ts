@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as log from 'electron-log';
 import { GatewayStatus, NodeCheckResult } from '../shared/types';
+import { randomBytes } from 'crypto';
 import { promisify } from 'util';
 import { exec, execFile, execFileSync } from 'child_process';
 
@@ -12,6 +13,7 @@ const execFileAsync = promisify(execFile);
 export class GatewayManager {
   private gatewayProcess: ChildProcess | null = null;
   private gatewayPort: number = 18789;
+  private gatewayToken: string | null = null;
   private openclawPath: string | null = null;
   private bundledNodePath: string | null = null;
   private standaloneBinaryPath: string | null = null;
@@ -23,6 +25,68 @@ export class GatewayManager {
     if (!this.useStandaloneBinary) {
       this.detectBundledNode();
     }
+    this.loadOrCreateGatewayToken();
+  }
+
+  /**
+   * Load existing gateway token from OpenClaw config or create a new one
+   */
+  private loadOrCreateGatewayToken(): void {
+    const openclawConfigPath = path.join(process.env.HOME || '', '.openclaw', 'openclaw.json');
+
+    try {
+      if (fs.existsSync(openclawConfigPath)) {
+        const config = JSON.parse(fs.readFileSync(openclawConfigPath, 'utf8'));
+        if (config.gateway?.auth?.token) {
+          this.gatewayToken = config.gateway.auth.token;
+          log.info('Loaded gateway token from OpenClaw config');
+          return;
+        }
+      }
+    } catch (error) {
+      log.warn('Failed to read OpenClaw config:', error);
+    }
+
+    // Generate new token if not found
+    this.gatewayToken = this.generateSecureToken();
+    log.info('Generated new gateway token');
+
+    // Try to save it to config
+    try {
+      this.saveGatewayTokenToConfig(openclawConfigPath, this.gatewayToken);
+    } catch (error) {
+      log.warn('Failed to save gateway token to config:', error);
+    }
+  }
+
+  /**
+   * Save gateway token to OpenClaw config file
+   */
+  private saveGatewayTokenToConfig(configPath: string, token: string): void {
+    let config: any = {};
+
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+
+    if (!config.gateway) {
+      config.gateway = {};
+    }
+    if (!config.gateway.auth) {
+      config.gateway.auth = {};
+    }
+
+    config.gateway.auth.mode = 'token';
+    config.gateway.auth.token = token;
+
+    // Ensure directory exists
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    log.info('Saved gateway token to OpenClaw config');
   }
 
   /**
@@ -180,7 +244,8 @@ export class GatewayManager {
     return {
       running: !this.gatewayProcess.killed,
       port: this.gatewayPort,
-      pid: this.gatewayProcess.pid
+      pid: this.gatewayProcess.pid,
+      token: this.gatewayToken || undefined
     };
   }
 
@@ -394,12 +459,26 @@ export class GatewayManager {
       env.PATH = `${nodeBinDir}${path.delimiter}${process.env.PATH}`;
     }
 
+    // Ensure we have a token loaded or created
+    if (!this.gatewayToken) {
+      this.loadOrCreateGatewayToken();
+    }
+
+    log.info('Using gateway token for authentication');
+
     return new Promise((resolve, reject) => {
+      // Pass token via environment variable to ensure gateway uses it
+      const gatewayEnv = {
+        ...env,
+        OPENCLAW_GATEWAY_TOKEN: this.gatewayToken!
+      };
+
       this.gatewayProcess = spawn(this.openclawPath!, [
         'gateway',
         '--port', this.gatewayPort.toString(),
-        '--verbose'
-      ], { env });
+        '--verbose',
+        '--allow-unconfigured'
+      ], { env: gatewayEnv });
 
       let startupOutput = '';
       let hasStarted = false;
@@ -412,7 +491,11 @@ export class GatewayManager {
         if (output.includes('listening') || output.includes('ready') || output.includes('ws://')) {
           if (!hasStarted) {
             hasStarted = true;
-            setTimeout(() => resolve(this.gatewayPort), 1000);
+            // Gateway is ready, resolve immediately since we already have the token
+            setTimeout(() => {
+              log.info(`Gateway ready on port ${this.gatewayPort}`);
+              resolve(this.gatewayPort);
+            }, 500);
           }
         }
       });
@@ -449,6 +532,9 @@ export class GatewayManager {
       }
 
       log.info('Stopping OpenClaw gateway...');
+
+      // Clear the token when stopping
+      this.gatewayToken = null;
 
       if (process.platform === 'win32') {
         spawn('taskkill', ['/pid', this.gatewayProcess.pid?.toString() || '', '/f', '/t']);
@@ -494,5 +580,13 @@ export class GatewayManager {
     }
 
     return paths;
+  }
+
+  /**
+   * Generate a secure random token for gateway authentication
+   */
+  private generateSecureToken(): string {
+    // Generate 32 bytes of random data and encode as hex
+    return randomBytes(32).toString('hex');
   }
 }

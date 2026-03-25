@@ -48,6 +48,9 @@ export class ConfigManager {
     this.config.settings.model = model;
     await this.saveConfig();
     log.info(`Model updated to: ${model.name}`);
+
+    // Also update OpenClaw's native config
+    await this.updateOpenClawConfig(model, null);
   }
 
   async setApiKey(apiKey: string): Promise<void> {
@@ -61,6 +64,102 @@ export class ConfigManager {
       this.config.settings.model.apiKey = apiKey;
       await this.saveConfig();
       log.info('API key updated');
+
+      // Also update OpenClaw's native config
+      await this.updateOpenClawConfig(this.config.settings.model, apiKey);
+    }
+  }
+
+  /**
+   * Update OpenClaw's native config file (~/.openclaw/openclaw.json)
+   * This is required for the gateway to use the correct model and API key
+   */
+  private async updateOpenClawConfig(model: ModelConfig, apiKey: string | null): Promise<void> {
+    try {
+      const openclawDir = path.join(process.env.HOME || '', '.openclaw');
+      const openclawConfigPath = path.join(openclawDir, 'openclaw.json');
+
+      // Ensure directory exists
+      await this.ensureDirectoryExists(openclawDir);
+
+      // Load existing OpenClaw config or create new one
+      let openclawConfig: any = {};
+      try {
+        const content = await fs.readFile(openclawConfigPath, 'utf-8');
+        openclawConfig = JSON.parse(content);
+      } catch {
+        // File doesn't exist or is invalid, start fresh
+        openclawConfig = {
+          meta: {
+            lastTouchedVersion: '1.0.0',
+            lastTouchedAt: new Date().toISOString()
+          }
+        };
+      }
+
+      // Map our model config to OpenClaw's format
+      const providerMapping: Record<string, string> = {
+        'anthropic': 'anthropic',
+        'openai': 'openai',
+        'google': 'google',
+        'deepseek': 'deepseek',
+        'alibaba': 'bailian',
+        'tencent': 'tencent',
+        'baidu': 'baidu',
+        'bytedance': 'bytedance'
+      };
+
+      const openclawProvider = providerMapping[model.provider] || model.provider;
+
+      // Update agents.defaults.model
+      if (!openclawConfig.agents) {
+        openclawConfig.agents = { defaults: {} };
+      }
+      if (!openclawConfig.agents.defaults) {
+        openclawConfig.agents.defaults = {};
+      }
+
+      openclawConfig.agents.defaults.model = {
+        primary: `${openclawProvider}/${model.id}`
+      };
+
+      // Update models configuration
+      if (!openclawConfig.models) {
+        openclawConfig.models = { mode: 'merge', providers: {} };
+      }
+      if (!openclawConfig.models.providers) {
+        openclawConfig.models.providers = {};
+      }
+
+      // Set up provider config with API key
+      const providerConfig: any = {
+        apiKey: apiKey || model.apiKey || '',
+        models: [{
+          id: model.id,
+          name: model.name,
+          api: 'openai-completions'
+        }]
+      };
+
+      // Add baseUrl for specific providers
+      const baseUrls: Record<string, string> = {
+        'deepseek': 'https://api.deepseek.com/v1',
+        'alibaba': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        'bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+      };
+
+      if (baseUrls[openclawProvider]) {
+        providerConfig.baseUrl = baseUrls[openclawProvider];
+      }
+
+      openclawConfig.models.providers[openclawProvider] = providerConfig;
+
+      // Save OpenClaw config
+      await fs.writeFile(openclawConfigPath, JSON.stringify(openclawConfig, null, 2), 'utf-8');
+      log.info(`OpenClaw config updated with model: ${openclawProvider}/${model.id}`);
+    } catch (error) {
+      log.error('Failed to update OpenClaw config:', error);
+      // Don't throw - the local config is still saved
     }
   }
 

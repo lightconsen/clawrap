@@ -1,32 +1,38 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { OpenClawConfig, GatewayStatus, ModelConfig } from '../shared/types';
 
+// Debug: log all IPC calls
+const debugInvoke = (channel: string, ...args: any[]) => {
+  console.log(`[IPC] Calling ${channel}`, args);
+  return ipcRenderer.invoke(channel, ...args);
+};
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   // Config API
-  getConfig: (): Promise<OpenClawConfig> => ipcRenderer.invoke('config:get'),
-  setModel: (model: ModelConfig): Promise<boolean> => ipcRenderer.invoke('config:setModel', model),
-  setApiKey: (apiKey: string): Promise<boolean> => ipcRenderer.invoke('config:setApiKey', apiKey),
+  getConfig: (): Promise<OpenClawConfig> => debugInvoke('config:get'),
+  setModel: (model: ModelConfig): Promise<boolean> => debugInvoke('config:setModel', model),
+  setApiKey: (apiKey: string): Promise<boolean> => debugInvoke('config:setApiKey', apiKey),
 
   // Gateway API
-  getGatewayStatus: (): Promise<GatewayStatus> => ipcRenderer.invoke('gateway:status'),
-  restartGateway: (): Promise<GatewayStatus> => ipcRenderer.invoke('gateway:restart'),
+  getGatewayStatus: (): Promise<GatewayStatus> => debugInvoke('gateway:status'),
+  restartGateway: (): Promise<GatewayStatus> => debugInvoke('gateway:restart'),
 
   // Installation API
   checkInstall: (): Promise<{ installed: boolean; path?: string; version?: string }> =>
-    ipcRenderer.invoke('install:check'),
+    debugInvoke('install:check'),
   installOpenClaw: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('install:install'),
-  completeInstall: (): Promise<boolean> => ipcRenderer.invoke('install:complete'),
+    debugInvoke('install:install'),
+  completeInstall: (): Promise<boolean> => debugInvoke('install:complete'),
 
   // Setup API
   completeSetup: (config: { model: ModelConfig; apiKey: string }): Promise<boolean> =>
-    ipcRenderer.invoke('setup:complete', config),
-  cancelSetup: (): Promise<void> => ipcRenderer.invoke('setup:cancel'),
+    debugInvoke('setup:complete', config),
+  cancelSetup: (): Promise<void> => debugInvoke('setup:cancel'),
 
   // Shell API
-  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url)
+  openExternal: (url: string): Promise<void> => debugInvoke('shell:openExternal', url)
 });
 
 // Type declarations for TypeScript

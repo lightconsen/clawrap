@@ -39,6 +39,7 @@ export interface GatewayStatus {
   running: boolean;
   port?: number;
   pid?: number;
+  token?: string;
   error?: string;
 }
 
