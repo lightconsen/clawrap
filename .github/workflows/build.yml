@@ -121,36 +121,38 @@ jobs:
         run: |
           echo "$WIN_CERTIFICATE" | base64 --decode > certificate.pfx
 
-      # Build installers with signing
-      - name: Build ${{ matrix.name }} installer
-        shell: bash
+      # Build installers - separate steps for signed vs unsigned
+      - name: Build ${{ matrix.name }} installer (with signing)
+        if: matrix.target == 'mac' && env.APPLE_CERTIFICATE
         env:
-          # macOS signing
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_KEYCHAIN: build.keychain
-          CSC_LINK: ${{ matrix.target == 'mac' && secrets.APPLE_CERTIFICATE || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          # Windows signing
-          WIN_CSC_LINK: ${{ matrix.target == 'win' && secrets.WIN_CERTIFICATE || '' }}
-          WIN_CSC_KEY_PASSWORD: ${{ matrix.target == 'win' && secrets.WIN_CERTIFICATE_PASSWORD || '' }}
-          # Build settings
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ matrix.target }}" == "mac" ] && [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            echo "Building macOS with code signing..."
-            npx electron-builder --mac --publish never
-          elif [ "${{ matrix.target }}" == "win" ] && [ -n "${{ secrets.WIN_CERTIFICATE }}" ]; then
-            echo "Building Windows with code signing..."
-            npx electron-builder --win --publish never
-          elif [ "${{ matrix.target }}" == "linux" ]; then
-            echo "Building Linux (no signing)..."
-            npx electron-builder --linux --publish never
-          else
-            echo "Building ${{ matrix.name }} without signing (secrets not configured)..."
-            npx electron-builder --${{ matrix.target }} --publish never
-          fi
+          echo "Building macOS with code signing..."
+          npx electron-builder --mac --publish never
+
+      - name: Build ${{ matrix.name }} installer (with signing)
+        if: matrix.target == 'win' && env.WIN_CERTIFICATE
+        env:
+          WIN_CSC_LINK: certificate.pfx
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTIFICATE_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Building Windows with code signing..."
+          npx electron-builder --win --publish never
+
+      - name: Build ${{ matrix.name }} installer (no signing)
+        if: (matrix.target == 'mac' && !env.APPLE_CERTIFICATE) || (matrix.target == 'win' && !env.WIN_CERTIFICATE) || matrix.target == 'linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Building ${{ matrix.name }} without signing..."
+          npx electron-builder --${{ matrix.target }} --publish never
 
       # Upload artifacts
       - name: Upload build artifacts
