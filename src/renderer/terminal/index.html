@@ -314,6 +314,19 @@
   </div>
 
   <script>
+    // Wait for electronAPI to be available from preload script
+    async function waitForElectronAPI(maxRetries = 50) {
+      for (let i = 0; i < maxRetries; i++) {
+        if (window.electronAPI?.getGatewayStatus) {
+          console.log('[Terminal] electronAPI is available');
+          return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      console.error('[Terminal] electronAPI not available after waiting');
+      return false;
+    }
+
     // Get gateway port from main process (injected via executeJavaScript)
     let gatewayPort = window.__OPENCLAW_GATEWAY_PORT__ || 9090;
     let config = window.__OPENCLAW_CONFIG__ || {};
@@ -329,6 +342,12 @@
 
     async function initializeTerminal() {
       try {
+        // Wait for electronAPI to be available
+        const apiAvailable = await waitForElectronAPI();
+        if (!apiAvailable) {
+          throw new Error('Electron API not available - preload script failed to load');
+        }
+
         // Check gateway status with retry for token
         let status = await window.electronAPI.getGatewayStatus();
         let retryCount = 0;
@@ -393,6 +412,7 @@
       // Check every 1 second for up to 30 seconds
       for (let i = 0; i < 30; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!window.electronAPI?.getGatewayStatus) continue;
         const status = await window.electronAPI.getGatewayStatus();
 
         if (status.token && status.token !== currentToken) {
@@ -420,6 +440,11 @@
       loadingEl.style.display = 'block';
 
       try {
+        // Wait for electronAPI to be available
+        const apiAvailable = await waitForElectronAPI();
+        if (!apiAvailable) {
+          throw new Error('Electron API not available - preload script failed to load');
+        }
         await window.electronAPI.restartGateway();
         await initializeTerminal();
       } catch (error) {
@@ -433,6 +458,7 @@
     // Periodic status check
     setInterval(async () => {
       try {
+        if (!window.electronAPI?.getGatewayStatus) return;
         const status = await window.electronAPI.getGatewayStatus();
         if (!status.running) {
           gatewayStatusEl.textContent = 'Gateway Disconnected';
@@ -459,16 +485,22 @@
     // Load models into dropdown
     async function loadModels() {
       try {
-        const models = await window.electronAPI.getPresetModels?.() || [];
+        const models = window.electronAPI?.getPresetModels ? window.electronAPI.getPresetModels() : [];
+        if (models.length === 0) {
+          settingModel.innerHTML = '<option value="">No models available</option>';
+          return;
+        }
         settingModel.innerHTML = models.map(m =>
           `<option value="${m.id}" data-provider="${m.provider}">${m.name}</option>`
         ).join('');
 
         // Select current model if configured
-        const config = await window.electronAPI.getConfig?.();
-        if (config?.settings?.model) {
-          settingModel.value = config.settings.model.id;
-          settingApiKey.value = config.settings.model.apiKey || '';
+        if (window.electronAPI?.getConfig) {
+          const config = await window.electronAPI.getConfig();
+          if (config?.settings?.model) {
+            settingModel.value = config.settings.model.id;
+            settingApiKey.value = config.settings.model.apiKey || '';
+          }
         }
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -493,26 +525,31 @@
       const modelName = selectedOption?.text || '';
       const apiKey = settingApiKey.value;
 
-      if (modelId && window.electronAPI.setModel) {
-        await window.electronAPI.setModel({
-          id: modelId,
-          name: modelName,
-          provider: provider,
-          apiKey: apiKey
-        });
-      }
+      try {
+        if (modelId && window.electronAPI?.setModel) {
+          await window.electronAPI.setModel({
+            id: modelId,
+            name: modelName,
+            provider: provider,
+            apiKey: apiKey
+          });
+        }
 
-      if (apiKey && window.electronAPI.setApiKey) {
-        await window.electronAPI.setApiKey(apiKey);
-      }
+        if (apiKey && window.electronAPI?.setApiKey) {
+          await window.electronAPI.setApiKey(apiKey);
+        }
 
-      closeSettings();
+        closeSettings();
 
-      // Restart gateway if port changed
-      const newPort = parseInt(settingGatewayPort.value);
-      if (newPort !== gatewayPort && window.electronAPI.restartGateway) {
-        await window.electronAPI.restartGateway();
-        gatewayPort = newPort;
+        // Restart gateway if port changed
+        const newPort = parseInt(settingGatewayPort.value);
+        if (newPort !== gatewayPort && window.electronAPI?.restartGateway) {
+          await window.electronAPI.restartGateway();
+          gatewayPort = newPort;
+        }
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+        alert('Failed to save settings: ' + error.message);
       }
     }
 

@@ -254,13 +254,24 @@ class OpenClawApp {
   }
 
   private async createMainWindow(gatewayPort: number): Promise<void> {
+    const preloadPath = path.join(__dirname, '../preload/index.js');
+    log.info(`Preload script path: ${preloadPath}`);
+
+    // Check if preload exists
+    const fs = require('fs');
+    if (!fs.existsSync(preloadPath)) {
+      log.error(`Preload script NOT FOUND at: ${preloadPath}`);
+    } else {
+      log.info(`Preload script found at: ${preloadPath}`);
+    }
+
     this.mainWindow = new BrowserWindow({
       width: 1400,
       height: 900,
       minWidth: 800,
       minHeight: 600,
       webPreferences: {
-        preload: path.join(__dirname, '../preload/index.js'),
+        preload: preloadPath,
         contextIsolation: true,
         nodeIntegration: false,
         additionalArguments: [`--gateway-port=${gatewayPort}`]
