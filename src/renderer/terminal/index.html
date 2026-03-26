@@ -40,138 +40,9 @@
     #header .status {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 12px;
-      color: #8b949e;
-    }
-
-    #header .settings-icon {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      fill: #8b949e;
-      transition: fill 0.2s;
-    }
-
-    #header .settings-icon:hover {
-      fill: #e6edf3;
-    }
-
-    /* Settings Dialog */
-    #settings-dialog {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-
-    #settings-dialog.active {
-      display: flex;
-    }
-
-    .settings-content {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      width: 400px;
-      max-width: 90%;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px;
-      border-bottom: 1px solid #30363d;
-    }
-
-    .settings-header h2 {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 0;
-    }
-
-    .settings-close {
-      background: none;
-      border: none;
-      color: #8b949e;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 0;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .settings-close:hover {
-      color: #e6edf3;
-    }
-
-    .settings-body {
-      padding: 16px;
-    }
-
-    .setting-item {
-      margin-bottom: 16px;
-    }
-
-    .setting-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .setting-item label {
-      display: block;
-      font-size: 12px;
-      color: #8b949e;
-      margin-bottom: 8px;
-    }
-
-    .setting-item select,
-    .setting-item input {
-      width: 100%;
-      padding: 8px 12px;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      color: #e6edf3;
-      font-size: 14px;
-    }
-
-    .setting-item select:focus,
-    .setting-item input:focus {
-      outline: none;
-      border-color: #58a6ff;
-    }
-
-    .settings-footer {
-      display: flex;
-      justify-content: flex-end;
       gap: 8px;
-      padding: 16px;
-      border-top: 1px solid #30363d;
-    }
-
-    .btn-secondary {
-      padding: 8px 16px;
-      background: transparent;
-      color: #e6edf3;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .btn-secondary:hover {
-      background: #21262d;
+      font-size: 12px;
+      color: #8b949e;
     }
 
     #header .status-indicator {
@@ -261,10 +132,6 @@
     <div class="status">
       <span class="status-indicator"></span>
       <span id="gateway-status">Gateway Connected</span>
-      <svg class="settings-icon" id="settings-btn" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
-        <path fill-rule="evenodd" d="M8.5.75a.75.75 0 00-1.5 0v.75a5.98 5.98 0 00-2.06.77l-.53-.53a.75.75 0 00-1.06 1.06l.53.53a5.98 5.98 0 00-.77 2.06H2.75a.75.75 0 000 1.5h.75a5.98 5.98 0 00.77 2.06l-.53.53a.75.75 0 001.06 1.06l.53-.53c.6.4 1.3.67 2.06.77v.75a.75.75 0 001.5 0v-.75a5.98 5.98 0 002.06-.77l.53.53a.75.75 0 101.06-1.06l-.53-.53a5.98 5.98 0 00.77-2.06h.75a.75.75 0 000-1.5h-.75a5.98 5.98 0 00-.77-2.06l.53-.53a.75.75 0 10-1.06-1.06l-.53.53a5.98 5.98 0 00-2.06-.77V.75zM4 8a4 4 0 118 0 4 4 0 01-8 0z"/>
-      </svg>
     </div>
   </div>
 
@@ -283,50 +150,7 @@
     <iframe id="terminal-frame" style="display: none;"></iframe>
   </div>
 
-  <!-- Settings Dialog -->
-  <div id="settings-dialog">
-    <div class="settings-content">
-      <div class="settings-header">
-        <h2>Settings</h2>
-        <button class="settings-close" id="settings-close">&times;</button>
-      </div>
-      <div class="settings-body">
-        <div class="setting-item">
-          <label for="setting-model">AI Model</label>
-          <select id="setting-model">
-            <option value="">Loading models...</option>
-          </select>
-        </div>
-        <div class="setting-item">
-          <label for="setting-api-key">API Key</label>
-          <input type="password" id="setting-api-key" placeholder="Enter your API key">
-        </div>
-        <div class="setting-item">
-          <label for="setting-gateway-port">Gateway Port</label>
-          <input type="number" id="setting-gateway-port" value="18789" min="1024" max="65535">
-        </div>
-      </div>
-      <div class="settings-footer">
-        <button class="btn-secondary" id="settings-cancel">Cancel</button>
-        <button class="btn" id="settings-save">Save</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // Wait for electronAPI to be available from preload script
-    async function waitForElectronAPI(maxRetries = 50) {
-      for (let i = 0; i < maxRetries; i++) {
-        if (window.electronAPI?.getGatewayStatus) {
-          console.log('[Terminal] electronAPI is available');
-          return true;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      console.error('[Terminal] electronAPI not available after waiting');
-      return false;
-    }
-
     // Get gateway port from main process (injected via executeJavaScript)
     let gatewayPort = window.__OPENCLAW_GATEWAY_PORT__ || 9090;
     let config = window.__OPENCLAW_CONFIG__ || {};
@@ -342,12 +166,6 @@
 
     async function initializeTerminal() {
       try {
-        // Wait for electronAPI to be available
-        const apiAvailable = await waitForElectronAPI();
-        if (!apiAvailable) {
-          throw new Error('Electron API not available - preload script failed to load');
-        }
-
         // Check gateway status with retry for token
         let status = await window.electronAPI.getGatewayStatus();
         let retryCount = 0;
@@ -412,7 +230,6 @@
       // Check every 1 second for up to 30 seconds
       for (let i = 0; i < 30; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        if (!window.electronAPI?.getGatewayStatus) continue;
         const status = await window.electronAPI.getGatewayStatus();
 
         if (status.token && status.token !== currentToken) {
@@ -440,11 +257,6 @@
       loadingEl.style.display = 'block';
 
       try {
-        // Wait for electronAPI to be available
-        const apiAvailable = await waitForElectronAPI();
-        if (!apiAvailable) {
-          throw new Error('Electron API not available - preload script failed to load');
-        }
         await window.electronAPI.restartGateway();
         await initializeTerminal();
       } catch (error) {
@@ -458,7 +270,6 @@
     // Periodic status check
     setInterval(async () => {
       try {
-        if (!window.electronAPI?.getGatewayStatus) return;
         const status = await window.electronAPI.getGatewayStatus();
         if (!status.running) {
           gatewayStatusEl.textContent = 'Gateway Disconnected';
@@ -471,99 +282,6 @@
         // Ignore errors
       }
     }, 5000);
-
-    // Settings Dialog
-    const settingsDialog = document.getElementById('settings-dialog');
-    const settingsBtn = document.getElementById('settings-btn');
-    const settingsClose = document.getElementById('settings-close');
-    const settingsCancel = document.getElementById('settings-cancel');
-    const settingsSave = document.getElementById('settings-save');
-    const settingModel = document.getElementById('setting-model');
-    const settingApiKey = document.getElementById('setting-api-key');
-    const settingGatewayPort = document.getElementById('setting-gateway-port');
-
-    // Load models into dropdown
-    async function loadModels() {
-      try {
-        const models = window.electronAPI?.getPresetModels ? window.electronAPI.getPresetModels() : [];
-        if (models.length === 0) {
-          settingModel.innerHTML = '<option value="">No models available</option>';
-          return;
-        }
-        settingModel.innerHTML = models.map(m =>
-          `<option value="${m.id}" data-provider="${m.provider}">${m.name}</option>`
-        ).join('');
-
-        // Select current model if configured
-        if (window.electronAPI?.getConfig) {
-          const config = await window.electronAPI.getConfig();
-          if (config?.settings?.model) {
-            settingModel.value = config.settings.model.id;
-            settingApiKey.value = config.settings.model.apiKey || '';
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load models:', error);
-        settingModel.innerHTML = '<option value="">Failed to load models</option>';
-      }
-    }
-
-    function openSettings() {
-      loadModels();
-      settingGatewayPort.value = gatewayPort;
-      settingsDialog.classList.add('active');
-    }
-
-    function closeSettings() {
-      settingsDialog.classList.remove('active');
-    }
-
-    async function saveSettings() {
-      const selectedOption = settingModel.options[settingModel.selectedIndex];
-      const modelId = settingModel.value;
-      const provider = selectedOption?.dataset?.provider || '';
-      const modelName = selectedOption?.text || '';
-      const apiKey = settingApiKey.value;
-
-      try {
-        if (modelId && window.electronAPI?.setModel) {
-          await window.electronAPI.setModel({
-            id: modelId,
-            name: modelName,
-            provider: provider,
-            apiKey: apiKey
-          });
-        }
-
-        if (apiKey && window.electronAPI?.setApiKey) {
-          await window.electronAPI.setApiKey(apiKey);
-        }
-
-        closeSettings();
-
-        // Restart gateway if port changed
-        const newPort = parseInt(settingGatewayPort.value);
-        if (newPort !== gatewayPort && window.electronAPI?.restartGateway) {
-          await window.electronAPI.restartGateway();
-          gatewayPort = newPort;
-        }
-      } catch (error) {
-        console.error('Failed to save settings:', error);
-        alert('Failed to save settings: ' + error.message);
-      }
-    }
-
-    settingsBtn.addEventListener('click', openSettings);
-    settingsClose.addEventListener('click', closeSettings);
-    settingsCancel.addEventListener('click', closeSettings);
-    settingsSave.addEventListener('click', saveSettings);
-
-    // Close dialog when clicking outside
-    settingsDialog.addEventListener('click', (e) => {
-      if (e.target === settingsDialog) {
-        closeSettings();
-      }
-    });
   </script>
 </body>
 </html>

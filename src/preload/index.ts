@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, PRESET_MODELS } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -14,7 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: (): Promise<OpenClawConfig> => debugInvoke('config:get'),
   setModel: (model: ModelConfig): Promise<boolean> => debugInvoke('config:setModel', model),
   setApiKey: (apiKey: string): Promise<boolean> => debugInvoke('config:setApiKey', apiKey),
-  getPresetModels: (): ModelConfig[] => PRESET_MODELS,
 
   // Gateway API
   getGatewayStatus: (): Promise<GatewayStatus> => debugInvoke('gateway:status'),
@@ -43,7 +42,6 @@ declare global {
       getConfig: () => Promise<OpenClawConfig>;
       setModel: (model: ModelConfig) => Promise<boolean>;
       setApiKey: (apiKey: string) => Promise<boolean>;
-      getPresetModels: () => ModelConfig[];
       getGatewayStatus: () => Promise<GatewayStatus>;
       restartGateway: () => Promise<GatewayStatus>;
       checkInstall: () => Promise<{ installed: boolean; path?: string; version?: string }>;
