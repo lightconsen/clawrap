@@ -14,17 +14,17 @@ jobs:
     strategy:
       matrix:
         include:
-          # Temporarily disabled macOS and Linux to test Windows
-          # - os: macos-latest
-          #   target: mac
-          #   name: macOS
-          #   arch: universal
-          #   electron_arch: x64,arm64
-          - os: windows-latest
-            target: win
-            name: Windows
-            arch: x64
-            electron_arch: x64
+          # Test macOS only
+          - os: macos-latest
+            target: mac
+            name: macOS
+            arch: universal
+            electron_arch: x64,arm64
+          # - os: windows-latest
+          #   target: win
+          #   name: Windows
+          #   arch: x64
+          #   electron_arch: x64
           # - os: ubuntu-latest
           #   target: linux
           #   name: Linux
