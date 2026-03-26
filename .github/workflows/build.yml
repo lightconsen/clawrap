@@ -1,0 +1,152 @@
+name: Build Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+            name: macOS
+            arch: universal
+          - os: windows-latest
+            target: win
+            name: Windows
+            arch: x64
+          - os: ubuntu-latest
+            target: linux
+            name: Linux
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build:ts
+
+      # macOS signing setup
+      - name: Setup macOS signing
+        if: matrix.target == 'mac' && env.APPLE_CERTIFICATE
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productbuild: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+      # Windows signing setup
+      - name: Setup Windows signing
+        if: matrix.target == 'win' && env.WIN_CERTIFICATE
+        shell: bash
+        env:
+          WIN_CERTIFICATE: ${{ secrets.WIN_CERTIFICATE }}
+        run: |
+          echo "$WIN_CERTIFICATE" | base64 --decode > certificate.pfx
+
+      # Build installers with signing
+      - name: Build ${{ matrix.name }} installer
+        shell: bash
+        env:
+          # macOS signing
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEYCHAIN: build.keychain
+          CSC_LINK: ${{ matrix.target == 'mac' && secrets.APPLE_CERTIFICATE || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          # Windows signing
+          WIN_CSC_LINK: ${{ matrix.target == 'win' && secrets.WIN_CERTIFICATE || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ matrix.target == 'win' && secrets.WIN_CERTIFICATE_PASSWORD || '' }}
+          # Build settings
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ matrix.target }}" == "mac" ] && [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            echo "Building macOS with code signing..."
+            npx electron-builder --mac --publish never
+          elif [ "${{ matrix.target }}" == "win" ] && [ -n "${{ secrets.WIN_CERTIFICATE }}" ]; then
+            echo "Building Windows with code signing..."
+            npx electron-builder --win --publish never
+          elif [ "${{ matrix.target }}" == "linux" ]; then
+            echo "Building Linux (no signing)..."
+            npx electron-builder --linux --publish never
+          else
+            echo "Building ${{ matrix.name }} without signing (secrets not configured)..."
+            npx electron-builder --${{ matrix.target }} --publish never
+          fi
+
+      # Upload artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-${{ matrix.arch }}-build
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.msi
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.snap
+            release/*.yml
+            release/*.yaml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Create GitHub release with signed installers
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*-build'
+          merge-multiple: true
+
+      - name: List artifacts
+        run: |
+          echo "=== Build Artifacts ==="
+          find artifacts -type f -ls
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
