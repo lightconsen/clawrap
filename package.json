@@ -56,13 +56,6 @@
       {
         "from": "resources/default-config.yaml",
         "to": "default-config.yaml"
-      },
-      {
-        "from": "resources/bin",
-        "to": "bin",
-        "filter": [
-          "**/*"
-        ]
       }
     ],
     "mac": {
