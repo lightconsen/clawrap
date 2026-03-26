@@ -46,11 +46,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        env:
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download
-          ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
-          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build TypeScript
         run: pnpm build:ts
