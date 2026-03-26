@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Clawrap - Electron wrapper for OpenClaw web terminal",
   "main": "dist/main/index.js",
-  "author": "OpenClaw",
+  "author": "OpenClaw <openclaw@example.com>",
   "license": "MIT",
   "private": true,
   "repository": {
