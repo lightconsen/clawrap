@@ -46,7 +46,11 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/v
+        run: |
+          npm config set electron_mirror https://github.com/electron/electron/releases/download/v
+          pnpm install --frozen-lockfile
 
       - name: Build TypeScript
         run: pnpm build:ts
