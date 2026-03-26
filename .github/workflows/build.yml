@@ -18,14 +18,17 @@ jobs:
             target: mac
             name: macOS
             arch: universal
+            electron_arch: x64,arm64
           - os: windows-latest
             target: win
             name: Windows
             arch: x64
+            electron_arch: x64
           - os: ubuntu-latest
             target: linux
             name: Linux
             arch: x64
+            electron_arch: x64
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -45,8 +48,50 @@ jobs:
           node-version: 24
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # Install dependencies WITHOUT running postinstall scripts
+      - name: Install dependencies (skip scripts)
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Manually download electron binary for this platform
+      - name: Download electron binary
+        shell: bash
+        run: |
+          ELECTRON_VERSION=41.0.4
+          ELECTRON_CACHE_DIR="$HOME/.cache/electron"
+          mkdir -p "$ELECTRON_CACHE_DIR"
+
+          if [[ "${{ matrix.target }}" == "mac" ]]; then
+            # Download both x64 and arm64 for macOS
+            for arch in x64 arm64; do
+              FILENAME="electron-v${ELECTRON_VERSION}-darwin-${arch}.zip"
+              URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+              echo "Downloading ${FILENAME}..."
+              curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL" || echo "Failed to download ${FILENAME}"
+            done
+          elif [[ "${{ matrix.target }}" == "win" ]]; then
+            FILENAME="electron-v${ELECTRON_VERSION}-win32-x64.zip"
+            URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+            echo "Downloading ${FILENAME}..."
+            curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL"
+          elif [[ "${{ matrix.target }}" == "linux" ]]; then
+            FILENAME="electron-v${ELECTRON_VERSION}-linux-x64.zip"
+            URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+            echo "Downloading ${FILENAME}..."
+            curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL"
+          fi
+
+          echo "Electron cache contents:"
+          ls -la "$ELECTRON_CACHE_DIR/"
+
+      # Run electron postinstall manually
+      - name: Run electron postinstall
+        run: cd node_modules/electron && node install.js
+
+      # Run electron-builder install-app-deps
+      - name: Install app dependencies
+        run: npx electron-builder install-app-deps
 
       - name: Build TypeScript
         run: pnpm build:ts
