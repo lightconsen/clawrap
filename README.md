@@ -1,4 +1,4 @@
-# OpenClaw Desktop
+# Clawrap
 
 An Electron wrapper for OpenClaw's web terminal with automatic installation, cross-platform installers, and simplified user onboarding.
 
@@ -28,7 +28,7 @@ The Electron wrapper will check for OpenClaw installation and install it automat
 ## Project Structure
 
 ```
-openclaw-desktop/
+clawrap/
 ├── src/
 │   ├── main/              # Electron main process
 │   ├── preload/           # Preload scripts
@@ -88,7 +88,7 @@ Output will be in the `release/` directory.
 
 ### OpenClaw Installation
 
-Unlike typical Electron apps that bundle a binary, OpenClaw Desktop:
+Unlike typical Electron apps that bundle a binary, Clawrap:
 
 1. **Checks** if `openclaw` is installed globally via npm
 2. **Installs** automatically using `npm install -g openclaw@latest` if not found

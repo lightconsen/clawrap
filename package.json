@@ -1,14 +1,14 @@
 {
-  "name": "openclaw-desktop",
+  "name": "clawrap",
   "version": "1.0.0",
-  "description": "OpenClaw Desktop - Electron wrapper for OpenClaw web terminal",
+  "description": "Clawrap - Electron wrapper for OpenClaw web terminal",
   "main": "dist/main/index.js",
   "author": "OpenClaw",
   "license": "MIT",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/openclaw/openclaw.git"
+    "url": "https://github.com/lightconsen/clawrap.git"
   },
   "scripts": {
     "dev": "NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html src/renderer/terminal/*.png dist/renderer/terminal/ 2>/dev/null; NODE_ENV=development electron .",
