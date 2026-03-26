@@ -44,9 +44,6 @@
   "build": {
     "appId": "com.openclaw.desktop",
     "productName": "OpenClaw",
-    "electronDownload": {
-      "mirror": "https://github.com/electron/electron/releases/download/v"
-    },
     "directories": {
       "output": "release",
       "buildResources": "build"
