@@ -548,21 +548,26 @@ class OpenClawApp {
 
   private async createSettingsWindow(): Promise<void> {
     const settingsWindow = new BrowserWindow({
-      width: 500,
-      height: 400,
-      resizable: false,
-      maximizable: false,
-      minimizable: false,
+      width: 700,
+      height: 500,
+      minWidth: 600,
+      minHeight: 400,
+      maximizable: true,
+      minimizable: true,
       parent: this.mainWindow || undefined,
-      modal: true,
+      modal: false,
       title: 'Settings',
       icon: this.getIconPath(),
-      show: false
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
     });
 
-    // Load a simple settings HTML
     const config = this.configManager.getConfig();
     const status = this.gatewayManager.getStatus();
+    const installCheck = await this.gatewayManager.checkInstallation();
 
     settingsWindow.loadURL(`data:text/html,${encodeURIComponent(`
       <!DOCTYPE html>
@@ -575,55 +580,375 @@ class OpenClawApp {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #0d1117;
             color: #e6edf3;
-            padding: 24px;
-            line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
           }
-          h1 { font-size: 18px; margin-bottom: 16px; color: #f0f6fc; }
-          .setting-item {
-            margin-bottom: 16px;
-            padding: 12px;
+          .header {
             background: #161b22;
-            border-radius: 6px;
-            border: 1px solid #30363d;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
           }
-          .setting-label {
-            font-size: 13px;
-            color: #8b949e;
-            margin-bottom: 4px;
-          }
-          .setting-value {
-            font-size: 14px;
-            color: #e6edf3;
+          .header h1 {
+            font-size: 18px;
+            color: #f0f6fc;
+            font-weight: 600;
           }
           .close-btn {
-            position: absolute;
-            top: 12px;
-            right: 16px;
             background: none;
             border: none;
             color: #8b949e;
             font-size: 20px;
             cursor: pointer;
             padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
           }
-          .close-btn:hover { color: #e6edf3; }
+          .close-btn:hover {
+            color: #e6edf3;
+            background: #30363d;
+          }
+          .tabs-container {
+            display: flex;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 0 20px;
+          }
+          .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #8b949e;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+          }
+          .tab:hover {
+            color: #e6edf3;
+          }
+          .tab.active {
+            color: #58a6ff;
+            border-bottom-color: #58a6ff;
+          }
+          .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+          }
+          .tab-content {
+            display: none;
+          }
+          .tab-content.active {
+            display: block;
+          }
+          .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f0f6fc;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #30363d;
+          }
+          .setting-item {
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #161b22;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+          }
+          .setting-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .setting-value {
+            font-size: 14px;
+            color: #e6edf3;
+            font-family: 'SF Mono', Monaco, monospace;
+          }
+          .setting-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+          }
+          .setting-row .setting-item {
+            flex: 1;
+            min-width: 200px;
+          }
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+          }
+          .status-badge.running {
+            background: #238636;
+            color: white;
+          }
+          .status-badge.stopped {
+            background: #f85149;
+            color: white;
+          }
+          .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+          }
+          .btn {
+            padding: 8px 16px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s;
+            margin-right: 8px;
+            margin-top: 8px;
+          }
+          .btn:hover {
+            background: #2ea043;
+          }
+          .btn.secondary {
+            background: #21262d;
+            border: 1px solid #30363d;
+          }
+          .btn.secondary:hover {
+            background: #30363d;
+          }
+          .btn.danger {
+            background: #da3633;
+          }
+          .btn.danger:hover {
+            background: #f85149;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+          }
+          .model-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+          }
+          .model-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f0f6fc;
+            margin-bottom: 4px;
+          }
+          .model-provider {
+            font-size: 12px;
+            color: #8b949e;
+          }
+          .channel-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .channel-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+          }
+          .channel-name {
+            font-size: 13px;
+            color: #e6edf3;
+          }
+          .channel-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #238636;
+            color: white;
+          }
+          .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+          }
+          .log-output {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: #8b949e;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 12px;
+          }
         </style>
       </head>
       <body>
-        <button class="close-btn" onclick="window.close()">&times;</button>
-        <h1>Settings</h1>
-        <div class="setting-item">
-          <div class="setting-label">Gateway Port</div>
-          <div class="setting-value">${status.port || config.settings.gateway.port || 18789}</div>
+        <div class="header">
+          <h1>Settings</h1>
+          <button class="close-btn" onclick="window.close()">&times;</button>
         </div>
-        <div class="setting-item">
-          <div class="setting-label">Gateway Status</div>
-          <div class="setting-value">${status.running ? 'Running' : 'Stopped'}</div>
+        <div class="tabs-container">
+          <button class="tab active" onclick="switchTab('overview')">Overview</button>
+          <button class="tab" onclick="switchTab('model')">Model Settings</button>
+          <button class="tab" onclick="switchTab('channels')">Channels</button>
+          <button class="tab" onclick="switchTab('gateway')">Gateway Control</button>
         </div>
-        <div class="setting-item">
-          <div class="setting-label">Version</div>
-          <div class="setting-value">OpenClaw Desktop v1.0.1</div>
+        <div class="content">
+          <!-- Overview Tab -->
+          <div id="overview" class="tab-content active">
+            <div class="section-title">System Overview</div>
+            <div class="info-grid">
+              <div class="setting-item">
+                <div class="setting-label">OpenClaw Desktop Version</div>
+                <div class="setting-value">v1.0.1</div>
+              </div>
+              <div class="setting-item">
+                <div class="setting-label">OpenClaw CLI Version</div>
+                <div class="setting-value">${installCheck.version || 'Not installed'}</div>
+              </div>
+              <div class="setting-item">
+                <div class="setting-label">Gateway Port</div>
+                <div class="setting-value">${status.port || config.settings.gateway.port || 18789}</div>
+              </div>
+              <div class="setting-item">
+                <div class="setting-label">Gateway Status</div>
+                <span class="status-badge ${status.running ? 'running' : 'stopped'}">
+                  <span class="status-dot"></span>
+                  ${status.running ? 'Running' : 'Stopped'}
+                </span>
+              </div>
+            </div>
+            <div class="section-title" style="margin-top: 24px;">Configuration Paths</div>
+            <div class="setting-item">
+              <div class="setting-label">Config Directory</div>
+              <div class="setting-value">${process.env.HOME || process.env.USERPROFILE}/.openclaw</div>
+            </div>
+          </div>
+
+          <!-- Model Settings Tab -->
+          <div id="model" class="tab-content">
+            <div class="section-title">Current Model Configuration</div>
+            ${config.settings.model ? `
+            <div class="model-card">
+              <div class="model-name">${config.settings.model.name}</div>
+              <div class="model-provider">Provider: ${config.settings.model.provider}</div>
+              <div class="model-provider">Model ID: ${config.settings.model.id}</div>
+            </div>
+            ` : '<div class="empty-state">No model configured. Please run setup to configure a model.</div>'}
+            <div class="section-title" style="margin-top: 24px;">Available Presets</div>
+            <div class="info-grid">
+              <div class="model-card">
+                <div class="model-name">Claude Sonnet 4.6</div>
+                <div class="model-provider">Anthropic</div>
+              </div>
+              <div class="model-card">
+                <div class="model-name">GPT-4o</div>
+                <div class="model-provider">OpenAI</div>
+              </div>
+              <div class="model-card">
+                <div class="model-name">DeepSeek-V3</div>
+                <div class="model-provider">DeepSeek</div>
+              </div>
+              <div class="model-card">
+                <div class="model-name">Gemini 2.5 Pro</div>
+                <div class="model-provider">Google</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Channels Settings Tab -->
+          <div id="channels" class="tab-content">
+            <div class="section-title">Enabled Channels</div>
+            <div class="channel-list">
+              ${config.settings.bypass_channels && config.settings.bypass_channels.length > 0 ?
+                config.settings.bypass_channels.map(ch => `
+                  <div class="channel-item">
+                    <span class="channel-name">${ch.type}</span>
+                    <span class="channel-status">${ch.enabled ? 'Enabled' : 'Disabled'}</span>
+                  </div>
+                `).join('')
+                : '<div class="empty-state">No bypass channels configured</div>'
+              }
+            </div>
+            <div class="section-title" style="margin-top: 24px;">Skills</div>
+            <div class="setting-row">
+              <div class="setting-item" style="flex: 1;">
+                <div class="setting-label">Enabled Skills</div>
+                <div class="setting-value">${config.settings.skills?.enabled?.length || 0} skills enabled</div>
+              </div>
+              <div class="setting-item" style="flex: 1;">
+                <div class="setting-label">Enabled Tools</div>
+                <div class="setting-value">${config.settings.tools?.enabled?.length || 0} tools enabled</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gateway Control Panel Tab -->
+          <div id="gateway" class="tab-content">
+            <div class="section-title">Gateway Control</div>
+            <div class="setting-item">
+              <div class="setting-label">Gateway Process</div>
+              <div style="margin-top: 12px;">
+                <button class="btn" onclick="alert('Restart gateway functionality would be implemented here')">Restart Gateway</button>
+                <button class="btn secondary" onclick="alert('Stop gateway functionality would be implemented here')">Stop Gateway</button>
+                <button class="btn danger" onclick="alert('Force kill functionality would be implemented here')">Force Kill</button>
+              </div>
+              <div class="log-output">
+> Gateway PID: ${status.pid || 'N/A'}<br>
+> Port: ${status.port || 'N/A'}<br>
+> Token: ${status.token ? 'Configured' : 'Not set'}<br>
+> Last checked: ${new Date().toLocaleTimeString()}
+              </div>
+            </div>
+            <div class="section-title" style="margin-top: 24px;">Diagnostics</div>
+            <div class="setting-row">
+              <div class="setting-item" style="flex: 1;">
+                <div class="setting-label">Installation Path</div>
+                <div class="setting-value" style="font-size: 11px;">${installCheck.path || 'Not found'}</div>
+              </div>
+              <div class="setting-item" style="flex: 1;">
+                <div class="setting-label">Node.js Version Check</div>
+                <div class="setting-value">${installCheck.installed ? 'Pass' : 'Fail'}</div>
+              </div>
+            </div>
+          </div>
         </div>
+        <script>
+          function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+              content.classList.remove('active');
+            });
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+              tab.classList.remove('active');
+            });
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+          }
+        </script>
       </body>
       </html>
     `)}`);
