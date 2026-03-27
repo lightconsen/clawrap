@@ -187,6 +187,11 @@ class OpenClawApp {
     ipcMain.handle('shell:openExternal', (_event, url: string) => {
       shell.openExternal(url);
     });
+
+    // Open settings window
+    ipcMain.handle('app:openSettings', () => {
+      this.createSettingsWindow();
+    });
   }
 
   private async createSetupWindow(): Promise<void> {
@@ -539,6 +544,93 @@ class OpenClawApp {
 
     const menu = Menu.buildFromTemplate(template);
     Menu.setApplicationMenu(menu);
+  }
+
+  private async createSettingsWindow(): Promise<void> {
+    const settingsWindow = new BrowserWindow({
+      width: 500,
+      height: 400,
+      resizable: false,
+      maximizable: false,
+      minimizable: false,
+      parent: this.mainWindow || undefined,
+      modal: true,
+      title: 'Settings',
+      icon: this.getIconPath(),
+      show: false
+    });
+
+    // Load a simple settings HTML
+    const config = this.configManager.getConfig();
+    const status = this.gatewayManager.getStatus();
+
+    settingsWindow.loadURL(`data:text/html,${encodeURIComponent(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            padding: 24px;
+            line-height: 1.5;
+          }
+          h1 { font-size: 18px; margin-bottom: 16px; color: #f0f6fc; }
+          .setting-item {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #161b22;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+          }
+          .setting-label {
+            font-size: 13px;
+            color: #8b949e;
+            margin-bottom: 4px;
+          }
+          .setting-value {
+            font-size: 14px;
+            color: #e6edf3;
+          }
+          .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+          }
+          .close-btn:hover { color: #e6edf3; }
+        </style>
+      </head>
+      <body>
+        <button class="close-btn" onclick="window.close()">&times;</button>
+        <h1>Settings</h1>
+        <div class="setting-item">
+          <div class="setting-label">Gateway Port</div>
+          <div class="setting-value">${status.port || config.settings.gateway.port || 18789}</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Gateway Status</div>
+          <div class="setting-value">${status.running ? 'Running' : 'Stopped'}</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Version</div>
+          <div class="setting-value">OpenClaw Desktop v1.0.1</div>
+        </div>
+      </body>
+      </html>
+    `)}`);
+
+    settingsWindow.once('ready-to-show', () => {
+      settingsWindow.show();
+    });
   }
 
   private getIconPath(): string {

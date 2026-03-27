@@ -32,7 +32,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cancelSetup: (): Promise<void> => debugInvoke('setup:cancel'),
 
   // Shell API
-  openExternal: (url: string): Promise<void> => debugInvoke('shell:openExternal', url)
+  openExternal: (url: string): Promise<void> => debugInvoke('shell:openExternal', url),
+
+  // App API
+  openSettings: (): Promise<void> => debugInvoke('app:openSettings')
 });
 
 // Type declarations for TypeScript
@@ -50,6 +53,7 @@ declare global {
       completeSetup: (config: { model: ModelConfig; apiKey: string }) => Promise<boolean>;
       cancelSetup: () => Promise<void>;
       openExternal: (url: string) => Promise<void>;
+      openSettings: () => Promise<void>;
     };
   }
 }
