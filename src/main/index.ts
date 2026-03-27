@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS } from '../shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -97,6 +97,26 @@ class OpenClawApp {
 
     ipcMain.handle('config:setApiKey', async (_event, apiKey: string) => {
       await this.configManager.setApiKey(apiKey);
+      return true;
+    });
+
+    ipcMain.handle('config:getSkills', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.skills?.enabled || [];
+    });
+
+    ipcMain.handle('config:setSkills', async (_event, skills: string[]) => {
+      await this.configManager.setSkills(skills);
+      return true;
+    });
+
+    ipcMain.handle('config:getTools', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.tools?.enabled || [];
+    });
+
+    ipcMain.handle('config:setTools', async (_event, tools: string[]) => {
+      await this.configManager.setTools(tools);
       return true;
     });
 
@@ -788,6 +808,11 @@ class OpenClawApp {
             padding: 40px;
             color: #8b949e;
           }
+          .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+          }
           .log-output {
             background: #0d1117;
             border: 1px solid #30363d;
@@ -800,6 +825,85 @@ class OpenClawApp {
             overflow-y: auto;
             margin-top: 12px;
           }
+          .skills-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .skill-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            transition: border-color 0.2s;
+          }
+          .skill-item:hover {
+            border-color: #58a6ff;
+          }
+          .skill-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .skill-name {
+            font-size: 13px;
+            color: #e6edf3;
+            font-weight: 500;
+          }
+          .skill-description {
+            font-size: 11px;
+            color: #8b949e;
+          }
+          .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #21262d;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid #30363d;
+          }
+          .toggle-switch.enabled {
+            background: #238636;
+            border-color: #238636;
+          }
+          .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: #e6edf3;
+            border-radius: 50%;
+            transition: transform 0.2s;
+          }
+          .toggle-switch.enabled::after {
+            transform: translateX(20px);
+          }
+          .tools-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .tool-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+          }
+          .tool-name {
+            font-size: 13px;
+            color: #e6edf3;
+            font-family: 'SF Mono', Monaco, monospace;
+          }
         </style>
       </head>
       <body>
@@ -810,6 +914,7 @@ class OpenClawApp {
         <div class="tabs-container">
           <button class="tab active" onclick="switchTab('overview')">Overview</button>
           <button class="tab" onclick="switchTab('model')">Model Settings</button>
+          <button class="tab" onclick="switchTab('skills')">Skills</button>
           <button class="tab" onclick="switchTab('channels')">Channels</button>
           <button class="tab" onclick="switchTab('gateway')">Gateway Control</button>
         </div>
@@ -890,16 +995,36 @@ class OpenClawApp {
                 : '<div class="empty-state">No bypass channels configured</div>'
               }
             </div>
-            <div class="section-title" style="margin-top: 24px;">Skills</div>
-            <div class="setting-row">
-              <div class="setting-item" style="flex: 1;">
-                <div class="setting-label">Enabled Skills</div>
-                <div class="setting-value">${config.settings.skills?.enabled?.length || 0} skills enabled</div>
-              </div>
-              <div class="setting-item" style="flex: 1;">
-                <div class="setting-label">Enabled Tools</div>
-                <div class="setting-value">${config.settings.tools?.enabled?.length || 0} tools enabled</div>
-              </div>
+          </div>
+
+          <!-- Skills Settings Tab -->
+          <div id="skills" class="tab-content">
+            <div class="section-title">Skills</div>
+            <div class="skills-list">
+              ${AVAILABLE_SKILLS.map(skill => {
+                const isEnabled = (config.settings.skills?.enabled || []).includes(skill.id);
+                return `
+                  <div class="skill-item" data-skill-id="${skill.id}">
+                    <div class="skill-info">
+                      <span class="skill-name">${skill.name}</span>
+                      <span class="skill-description">${skill.description}</span>
+                    </div>
+                    <div class="toggle-switch ${isEnabled ? 'enabled' : ''}" onclick="toggleSkill('${skill.id}', this)"></div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="section-title" style="margin-top: 24px;">Tools</div>
+            <div class="tools-list">
+              ${['Read', 'Write', 'Edit', 'Bash', 'Grep', 'Glob', 'Task'].map(tool => {
+                const isEnabled = (config.settings.tools?.enabled || []).includes(tool);
+                return `
+                  <div class="tool-item">
+                    <span class="tool-name">${tool}</span>
+                    <div class="toggle-switch ${isEnabled ? 'enabled' : ''}" onclick="toggleTool('${tool}', this)"></div>
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
 
@@ -934,6 +1059,10 @@ class OpenClawApp {
           </div>
         </div>
         <script>
+          // Current state
+          let enabledSkills = ${JSON.stringify(config.settings.skills?.enabled || [])};
+          let enabledTools = ${JSON.stringify(config.settings.tools?.enabled || [])};
+
           function switchTab(tabName) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -947,6 +1076,32 @@ class OpenClawApp {
             document.getElementById(tabName).classList.add('active');
             // Add active class to clicked tab
             event.target.classList.add('active');
+          }
+
+          function toggleSkill(skillId, toggleEl) {
+            const isEnabled = enabledSkills.includes(skillId);
+            if (isEnabled) {
+              enabledSkills = enabledSkills.filter(id => id !== skillId);
+              toggleEl.classList.remove('enabled');
+            } else {
+              enabledSkills.push(skillId);
+              toggleEl.classList.add('enabled');
+            }
+            // Save to config
+            window.electronAPI.setSkills(enabledSkills);
+          }
+
+          function toggleTool(toolName, toggleEl) {
+            const isEnabled = enabledTools.includes(toolName);
+            if (isEnabled) {
+              enabledTools = enabledTools.filter(name => name !== toolName);
+              toggleEl.classList.remove('enabled');
+            } else {
+              enabledTools.push(toolName);
+              toggleEl.classList.add('enabled');
+            }
+            // Save to config
+            window.electronAPI.setTools(enabledTools);
           }
         </script>
       </body>

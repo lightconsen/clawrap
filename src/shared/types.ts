@@ -101,3 +101,12 @@ export const PRESET_MODELS: ModelConfig[] = [
   { id: "synthetic-default", name: "Synthetic", provider: "synthetic" },
   { id: "custom", name: "Custom Model (Other)", provider: "custom" }
 ];
+
+export const AVAILABLE_SKILLS = [
+  { id: "everything-claude-code:plan", name: "Plan", description: "Plan mode for architectural planning" },
+  { id: "everything-claude-code:tdd", name: "TDD", description: "Test-driven development mode" },
+  { id: "everything-claude-code:e2e", name: "E2E", description: "End-to-end testing mode" },
+  { id: "everything-claude-code:python-review", name: "Python Review", description: "Python code review" },
+  { id: "everything-claude-code:go-review", name: "Go Review", description: "Go code review" },
+  { id: "everything-claude-code:security-reviewer", name: "Security Reviewer", description: "Security analysis" }
+];

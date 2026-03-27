@@ -70,6 +70,32 @@ export class ConfigManager {
     }
   }
 
+  async setSkills(skills: string[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.skills) {
+      this.config.settings.skills = { enabled: [] };
+    }
+    this.config.settings.skills.enabled = skills;
+    await this.saveConfig();
+    log.info(`Skills updated: ${skills.length} enabled`);
+  }
+
+  async setTools(tools: string[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.tools) {
+      this.config.settings.tools = { enabled: [] };
+    }
+    this.config.settings.tools.enabled = tools;
+    await this.saveConfig();
+    log.info(`Tools updated: ${tools.length} enabled`);
+  }
+
   /**
    * Update OpenClaw's native config file (~/.openclaw/openclaw.json)
    * This is required for the gateway to use the correct model and API key
