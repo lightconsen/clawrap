@@ -141,6 +141,67 @@ class OpenClawApp {
       return true;
     });
 
+    // Skills Hub IPC
+    ipcMain.handle('skills:fetch', async () => {
+      try {
+        const https = await import('https');
+        const zlib = await import('zlib');
+        const { promisify } = await import('util');
+        const gunzip = promisify(zlib.gunzip);
+
+        // Fetch from clawhub.ai skills API
+        const response = await new Promise<any>((resolve, reject) => {
+          https.get('https://clawhub.ai/api/skills', {
+            headers: {
+              'Accept': 'application/json',
+              'Accept-Encoding': 'gzip'
+            }
+          }, (res) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', async () => {
+              try {
+                const data = Buffer.concat(chunks);
+                let result: any;
+                if (res.headers['content-encoding'] === 'gzip') {
+                  result = JSON.parse((await gunzip(data)).toString());
+                } else {
+                  result = JSON.parse(data.toString());
+                }
+                resolve(result);
+              } catch (e) {
+                reject(e);
+              }
+            });
+          }).on('error', reject);
+        });
+
+        return { success: true, data: response.data || response.skills || [] };
+      } catch (error) {
+        log.error('Failed to fetch skills from clawhub.ai:', error);
+        return { success: false, error: (error as Error).message, data: [] };
+      }
+    });
+
+    ipcMain.handle('skills:install', async (_event, skillId: string) => {
+      try {
+        // Skills are enabled/disabled via config, no actual installation needed
+        // Just enable the skill in config
+        const config = this.configManager.getConfig();
+        const enabledSkills = config.settings.skills?.enabled || [];
+
+        if (!enabledSkills.includes(skillId)) {
+          enabledSkills.push(skillId);
+          await this.configManager.setSkills(enabledSkills);
+        }
+
+        return { success: true };
+      } catch (error) {
+        log.error('Failed to install skill:', error);
+        return { success: false, error: (error as Error).message };
+      }
+    });
+
     // Gateway IPC
     ipcMain.handle('gateway:status', (): GatewayStatus => {
       return this.gatewayManager.getStatus();

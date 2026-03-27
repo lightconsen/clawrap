@@ -592,6 +592,103 @@
       gap: 8px;
       margin-top: 20px;
     }
+
+    /* Skills Hub Modal Styles */
+    #skills-hub-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .skills-hub-content {
+      max-width: 800px;
+      width: 90%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .skills-hub-body {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .skills-hub-search {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .skills-hub-search input {
+      flex: 1;
+      padding: 10px 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #e6edf3;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .skills-hub-search input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    .skills-hub-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+    .skill-hub-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      transition: border-color 0.2s;
+    }
+    .skill-hub-item:hover {
+      border-color: #58a6ff;
+    }
+    .skill-hub-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .skill-hub-name {
+      font-size: 14px;
+      color: #e6edf3;
+      font-weight: 600;
+    }
+    .skill-hub-description {
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .skill-hub-meta {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .skill-hub-installed {
+      font-size: 11px;
+      color: #238636;
+      padding: 4px 8px;
+      background: rgba(35, 134, 54, 0.15);
+      border-radius: 4px;
+    }
+    .skill-hub-actions {
+      display: flex;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -896,7 +993,17 @@
 
         <!-- Skills Settings Tab -->
         <div id="skills" class="tab-content">
-          <div class="section-title">Skills</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div class="section-title" style="margin: 0;">Skills</div>
+            <button class="btn" onclick="openSkillsHub()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              Browse Skills
+            </button>
+          </div>
           <div class="skills-list">
             ${getSkillsHTML(enabledSkills)}
           </div>
@@ -960,7 +1067,7 @@
       return skills.map(skill => {
         const isEnabled = enabledSkills.includes(skill.id);
         return `
-          <div class="skill-item">
+          <div class="skill-item" data-skill-id="${skill.id}">
             <div class="skill-info">
               <span class="skill-name">${skill.name}</span>
               <span class="skill-description">${skill.description}</span>
@@ -1123,6 +1230,122 @@
       }
     }
 
+    // Skills Hub Functions
+    async function openSkillsHub() {
+      console.log('[SkillsHub] openSkillsHub called');
+      const modal = document.getElementById('skills-hub-modal');
+      modal.style.display = 'flex';
+      await loadSkillsFromHub();
+    }
+
+    function closeSkillsHub() {
+      console.log('[SkillsHub] closeSkillsHub called');
+      document.getElementById('skills-hub-modal').style.display = 'none';
+    }
+
+    async function loadSkillsFromHub() {
+      console.log('[SkillsHub] loadSkillsFromHub called');
+      const loadingEl = document.getElementById('skills-hub-loading');
+      const errorEl = document.getElementById('skills-hub-error');
+      const listEl = document.getElementById('skills-hub-list');
+
+      loadingEl.style.display = 'block';
+      errorEl.style.display = 'none';
+      listEl.innerHTML = '';
+
+      try {
+        const result = await window.electronAPI.fetchSkills();
+        loadingEl.style.display = 'none';
+
+        if (!result.success) {
+          errorEl.textContent = result.error || 'Failed to load skills';
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        const skills = result.data || [];
+        window.__availableSkills = skills;
+
+        if (skills.length === 0) {
+          listEl.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center;">No skills available</div>';
+          return;
+        }
+
+        const enabledSkills = window.__enabledSkills || [];
+        listEl.innerHTML = skills.map(skill => {
+          const isInstalled = enabledSkills.includes(skill.id);
+          return `
+            <div class="skill-hub-item" data-skill-id="${skill.id}">
+              <div class="skill-hub-info">
+                <span class="skill-hub-name">${skill.name || skill.display_name || skill.id}</span>
+                <span class="skill-hub-description">${skill.description || 'No description available'}</span>
+              </div>
+              <div class="skill-hub-meta">
+                ${isInstalled ? '<span class="skill-hub-installed">Installed</span>' : ''}
+                <div class="skill-hub-actions">
+                  ${isInstalled ? `
+                    <button class="btn secondary" onclick="toggleSkillFromHub('${skill.id}')">Disable</button>
+                  ` : `
+                    <button class="btn" onclick="installSkillFromHub('${skill.id}')">Install</button>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('[SkillsHub] Error loading skills:', error);
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Failed to load skills from clawhub.ai';
+        errorEl.style.display = 'block';
+      }
+    }
+
+    function filterSkills() {
+      const query = document.getElementById('skills-search-input').value.toLowerCase();
+      const items = document.querySelectorAll('.skill-hub-item');
+
+      items.forEach(item => {
+        const name = item.querySelector('.skill-hub-name').textContent.toLowerCase();
+        const description = item.querySelector('.skill-hub-description').textContent.toLowerCase();
+        const isVisible = name.includes(query) || description.includes(query);
+        item.style.display = isVisible ? 'flex' : 'none';
+      });
+    }
+
+    async function installSkillFromHub(skillId) {
+      console.log('[SkillsHub] installSkillFromHub called for:', skillId);
+      try {
+        const result = await window.electronAPI.installSkill(skillId);
+        if (result.success) {
+          // Update local state
+          if (!window.__enabledSkills.includes(skillId)) {
+            window.__enabledSkills.push(skillId);
+          }
+          // Reload the hub list
+          await loadSkillsFromHub();
+        } else {
+          alert('Failed to install skill: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('[SkillsHub] Error installing skill:', error);
+        alert('Failed to install skill: ' + error.message);
+      }
+    }
+
+    async function toggleSkillFromHub(skillId) {
+      console.log('[SkillsHub] toggleSkillFromHub called for:', skillId);
+      // Find the toggle element in the main settings and click it
+      const skillElement = document.querySelector(`.skill-item[onclick*="${skillId}"]`);
+      if (skillElement) {
+        const toggleEl = skillElement.querySelector('.toggle-switch');
+        if (toggleEl) {
+          toggleSkill(skillId, toggleEl);
+          await loadSkillsFromHub();
+        }
+      }
+    }
+
     // Initialize on load
     initializeTerminal();
 
@@ -1216,6 +1439,34 @@
               <button type="submit" class="btn">Save Model</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Skills Hub Modal -->
+      <div id="skills-hub-modal">
+        <div class="modal-content skills-hub-content">
+          <div class="modal-header">
+            <h2>Skills Hub</h2>
+            <button class="modal-close" onclick="closeSkillsHub()">&times;</button>
+          </div>
+          <div class="skills-hub-body">
+            <div class="skills-hub-search">
+              <input type="text" id="skills-search-input" placeholder="Search skills..." oninput="filterSkills()">
+              <button class="btn" onclick="loadSkillsFromHub()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Refresh
+              </button>
+            </div>
+            <div id="skills-hub-loading" style="display: none; text-align: center; padding: 40px;">
+              <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto 16px;"></div>
+              <p>Loading skills from clawhub.ai...</p>
+            </div>
+            <div id="skills-hub-error" style="display: none; padding: 20px; text-align: center; color: #f85149;"></div>
+            <div id="skills-hub-list" class="skills-hub-list"></div>
+          </div>
         </div>
       </div>
     `;

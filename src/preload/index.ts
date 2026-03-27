@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateModel: (model: ModelConfig): Promise<boolean> => debugInvoke('models:update', model),
   removeModel: (modelId: string): Promise<boolean> => debugInvoke('models:remove', modelId),
 
+  // Skills Hub API
+  fetchSkills: () => debugInvoke('skills:fetch'),
+  installSkill: (skillId: string) => debugInvoke('skills:install', skillId),
+
   // Settings API
   getSettingsData: (): Promise<{ config: OpenClawConfig; status: GatewayStatus; installCheck: { installed: boolean; path?: string; version?: string } }> =>
     debugInvoke('settings:get'),
@@ -78,6 +82,9 @@ declare global {
       addModel: (model: ModelConfig) => Promise<boolean>;
       updateModel: (model: ModelConfig) => Promise<boolean>;
       removeModel: (modelId: string) => Promise<boolean>;
+      // Skills Hub API
+      fetchSkills: () => Promise<{ success: boolean; data: any[]; error?: string }>;
+      installSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
