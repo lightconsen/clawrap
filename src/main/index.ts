@@ -292,7 +292,8 @@ class OpenClawApp {
         preload: path.join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        additionalArguments: [`--gateway-port=${gatewayPort}`]
+        additionalArguments: [`--gateway-port=${gatewayPort}`],
+        devTools: true
       },
       title: 'OpenClaw',
       icon: this.getIconPath(),

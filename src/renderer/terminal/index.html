@@ -607,35 +607,52 @@
     }
 
     function openSettings() {
+      console.log('[Settings] openSettings called');
       // Hide terminal, show settings
       terminalFrame.style.display = 'none';
       loadingEl.style.display = 'none';
       errorEl.style.display = 'none';
-      document.getElementById('settings-container').classList.add('visible');
+      const settingsContainer = document.getElementById('settings-container');
+      console.log('[Settings] settings-container element:', settingsContainer);
+      settingsContainer.classList.add('visible');
+      console.log('[Settings] settings-container visible class added, now calling loadSettingsData');
       loadSettingsData();
     }
 
     function closeSettings() {
+      console.log('[Settings] closeSettings called');
       // Hide settings, show terminal
       document.getElementById('settings-container').classList.remove('visible');
       terminalFrame.style.display = 'block';
     }
 
     async function loadSettingsData() {
+      console.log('[Settings] loadSettingsData called');
       try {
+        console.log('[Settings] calling getSettingsData...');
         const data = await window.electronAPI.getSettingsData();
+        console.log('[Settings] data received:', data);
         renderSettingsContent(data);
       } catch (error) {
-        console.error('Failed to load settings data:', error);
+        console.error('[Settings] Failed to load settings data:', error);
       }
     }
 
     function renderSettingsContent(data) {
+      console.log('[Settings] renderSettingsContent called');
       const { config, status, installCheck } = data;
       const enabledSkills = config.settings.skills?.enabled || [];
       const enabledTools = config.settings.tools?.enabled || [];
 
-      document.getElementById('settings-content-inner').innerHTML = `
+      const settingsContentEl = document.getElementById('settings-content-inner');
+      console.log('[Settings] settings-content-inner element:', settingsContentEl);
+
+      if (!settingsContentEl) {
+        console.error('[Settings] settings-content-inner element not found!');
+        return;
+      }
+
+      const html = `
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
           <div class="section-title">System Overview</div>
@@ -757,9 +774,14 @@
         </div>
       `;
 
+      console.log('[Settings] Setting innerHTML, html length:', html.length);
+      settingsContentEl.innerHTML = html;
+      console.log('[Settings] innerHTML set, innerHTML now:', settingsContentEl.innerHTML.substring(0, 100));
+
       // Store state globally for toggle functions
       window.__enabledSkills = [...enabledSkills];
       window.__enabledTools = [...enabledTools];
+      console.log('[Settings] renderSettingsContent complete');
     }
 
     function getSkillsHTML(enabledSkills) {
@@ -799,14 +821,23 @@
     }
 
     function switchTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(content => {
+      console.log('[Settings] switchTab called with:', tabName);
+      const tabContents = document.querySelectorAll('.tab-content');
+      console.log('[Settings] found tab-content elements:', tabContents.length);
+      tabContents.forEach(content => {
         content.classList.remove('active');
       });
       document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
       });
-      document.getElementById(tabName).classList.add('active');
-      event.target.classList.add('active');
+      const targetTab = document.getElementById(tabName);
+      console.log('[Settings] target tab element:', targetTab);
+      if (targetTab) {
+        targetTab.classList.add('active');
+      }
+      if (event && event.target) {
+        event.target.classList.add('active');
+      }
     }
 
     function toggleSkill(skillId, toggleEl) {
