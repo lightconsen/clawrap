@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTools: (): Promise<string[]> => debugInvoke('config:getTools'),
   setTools: (tools: string[]): Promise<boolean> => debugInvoke('config:setTools', tools),
 
+  // Model Management API
+  getSavedModels: (): Promise<ModelConfig[]> => debugInvoke('models:get'),
+  addModel: (model: ModelConfig): Promise<boolean> => debugInvoke('models:add', model),
+  updateModel: (model: ModelConfig): Promise<boolean> => debugInvoke('models:update', model),
+  removeModel: (modelId: string): Promise<boolean> => debugInvoke('models:remove', modelId),
+
   // Settings API
   getSettingsData: (): Promise<{ config: OpenClawConfig; status: GatewayStatus; installCheck: { installed: boolean; path?: string; version?: string } }> =>
     debugInvoke('settings:get'),
@@ -67,6 +73,11 @@ declare global {
       cancelSetup: () => Promise<void>;
       openExternal: (url: string) => Promise<void>;
       openSettings: () => Promise<void>;
+      // Model Management API
+      getSavedModels: () => Promise<ModelConfig[]>;
+      addModel: (model: ModelConfig) => Promise<boolean>;
+      updateModel: (model: ModelConfig) => Promise<boolean>;
+      removeModel: (modelId: string) => Promise<boolean>;
     };
   }
 }

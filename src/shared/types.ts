@@ -32,6 +32,7 @@ export interface OpenClawConfig {
     tools: ToolConfig;
     bypass_channels: BypassChannel[];
     model: ModelConfig | null;
+    savedModels: ModelConfig[];
   };
 }
 

@@ -120,6 +120,27 @@ class OpenClawApp {
       return true;
     });
 
+    // Model Management IPC
+    ipcMain.handle('models:get', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.savedModels || [];
+    });
+
+    ipcMain.handle('models:add', async (_event, model: ModelConfig) => {
+      await this.configManager.addModel(model);
+      return true;
+    });
+
+    ipcMain.handle('models:update', async (_event, model: ModelConfig) => {
+      await this.configManager.updateModel(model);
+      return true;
+    });
+
+    ipcMain.handle('models:remove', async (_event, modelId: string) => {
+      await this.configManager.removeModel(modelId);
+      return true;
+    });
+
     // Gateway IPC
     ipcMain.handle('gateway:status', (): GatewayStatus => {
       return this.gatewayManager.getStatus();

@@ -96,6 +96,82 @@ export class ConfigManager {
     log.info(`Tools updated: ${tools.length} enabled`);
   }
 
+  async getSavedModels(): Promise<ModelConfig[]> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    return this.config.settings.savedModels || [];
+  }
+
+  async addModel(model: ModelConfig): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    // Check if model with same ID already exists
+    const exists = this.config.settings.savedModels.some(m => m.id === model.id);
+    if (exists) {
+      throw new Error(`Model with ID '${model.id}' already exists`);
+    }
+
+    this.config.settings.savedModels.push(model);
+    await this.saveConfig();
+    log.info(`Model added: ${model.name}`);
+  }
+
+  async updateModel(model: ModelConfig): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const index = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+    if (index === -1) {
+      throw new Error(`Model with ID '${model.id}' not found`);
+    }
+
+    this.config.settings.savedModels[index] = model;
+    await this.saveConfig();
+    log.info(`Model updated: ${model.name}`);
+
+    // If this is the currently selected model, update it
+    if (this.config.settings.model?.id === model.id) {
+      await this.setModel(model);
+    }
+  }
+
+  async removeModel(modelId: string): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const model = this.config.settings.savedModels.find(m => m.id === modelId);
+    if (!model) {
+      throw new Error(`Model with ID '${modelId}' not found`);
+    }
+
+    this.config.settings.savedModels = this.config.settings.savedModels.filter(m => m.id !== modelId);
+    await this.saveConfig();
+    log.info(`Model removed: ${model.name}`);
+
+    // If this was the currently selected model, clear the model selection
+    if (this.config.settings.model?.id === modelId) {
+      this.config.settings.model = null;
+      await this.saveConfig();
+    }
+  }
+
   /**
    * Update OpenClaw's native config file (~/.openclaw/openclaw.json)
    * This is required for the gateway to use the correct model and API key
@@ -350,7 +426,8 @@ export class ConfigManager {
             enabled: true
           }
         ],
-        model: null
+        model: null,
+        savedModels: []
       }
     };
   }
