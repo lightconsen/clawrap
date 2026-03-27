@@ -46,6 +46,21 @@ export class ConfigManager {
     }
 
     this.config.settings.model = model;
+
+    // Also add to saved models if not already present
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+    if (existingIndex === -1) {
+      // Model not in saved list, add it
+      this.config.settings.savedModels.push(model);
+    } else {
+      // Model exists, update it
+      this.config.settings.savedModels[existingIndex] = model;
+    }
+
     await this.saveConfig();
     log.info(`Model updated to: ${model.name}`);
 
