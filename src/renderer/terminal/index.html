@@ -485,8 +485,10 @@
       <button class="tab" onclick="switchTab('channels')">Channels</button>
       <button class="tab" onclick="switchTab('gateway')">Gateway Control</button>
     </div>
-    <div class="settings-content" id="settings-content">
-      <!-- Content loaded dynamically -->
+    <div class="settings-content">
+      <div id="settings-content-inner">
+        <!-- Content loaded dynamically -->
+      </div>
     </div>
   </div>
 
@@ -633,7 +635,7 @@
       const enabledSkills = config.settings.skills?.enabled || [];
       const enabledTools = config.settings.tools?.enabled || [];
 
-      document.getElementById('settings-content').innerHTML = `
+      document.getElementById('settings-content-inner').innerHTML = `
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
           <div class="section-title">System Overview</div>
