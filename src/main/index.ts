@@ -210,10 +210,12 @@ class OpenClawApp {
 
     // Settings API - get all data needed for settings page
     ipcMain.handle('settings:get', async () => {
+      const appDataPath = process.env.HOME || process.env.USERPROFILE || '';
       return {
         config: this.configManager.getConfig(),
         status: this.gatewayManager.getStatus(),
-        installCheck: await this.gatewayManager.checkInstallation()
+        installCheck: await this.gatewayManager.checkInstallation(),
+        configDir: `${appDataPath}/.openclaw`
       };
     });
   }

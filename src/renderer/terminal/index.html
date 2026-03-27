@@ -640,7 +640,7 @@
 
     function renderSettingsContent(data) {
       console.log('[Settings] renderSettingsContent called');
-      const { config, status, installCheck } = data;
+      const { config, status, installCheck, configDir } = data;
       const enabledSkills = config.settings.skills?.enabled || [];
       const enabledTools = config.settings.tools?.enabled || [];
 
@@ -680,7 +680,7 @@
           <div class="section-title" style="margin-top: 24px;">Configuration Paths</div>
           <div class="setting-item">
             <div class="setting-label">Config Directory</div>
-            <div class="setting-value">${process.env.HOME || process.env.USERPROFILE}/.openclaw</div>
+            <div class="setting-value">${configDir}</div>
           </div>
         </div>
 
