@@ -334,6 +334,7 @@ class OpenClawApp {
     this.mainWindow.once('ready-to-show', () => {
       log.info('Main window ready to show');
       this.mainWindow?.show();
+      this.mainWindow?.webContents.openDevTools();
     });
 
     // Fallback: show window after a timeout even if ready-to-show didn't fire
