@@ -81,6 +81,7 @@ export const TEXTS = {
     // Models section
     modelConfig: 'Model Configuration',
     modelConfigSubtitle: 'Configure your primary, fallback, and image models',
+    modelStatus: 'Model Status',
     primaryModel: 'Primary Model',
     fallbackModel: 'Fallback Model',
     imageModel: 'Image Model',
@@ -92,6 +93,9 @@ export const TEXTS = {
     baseUrl: 'Base URL (optional)',
     show: 'Show',
     hide: 'Hide',
+    notSet: 'Not set',
+    notConfigured: 'Not configured',
+    cannotRemovePrimary: 'Cannot remove the primary model. Please select a different primary model first.',
 
     // Model List
     modelList: 'Model List',

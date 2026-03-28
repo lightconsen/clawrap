@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useApp, useSetView, useModels, useGateway, useSkills, useTools } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
-import { PROVIDER_PRESETS, ModelConfig } from '@shared/types';
+import { ModelConfig } from '@shared/types';
 
 export function SettingsView() {
   const setView = useSetView();
   const { state } = useApp();
-  const { savedModels, primaryModel, fallbackModel, imageModel, setPrimaryModel, setFallbackModel, setImageModel, addModel, updateModel, removeModel } = useModels();
+  const { savedModels, primaryModel, fallbackModel, imageModel, addModel, updateModel, removeModel } = useModels();
   const { gatewayStatus, restartGateway } = useGateway();
   const { skills, setSkills } = useSkills();
   const { tools, setTools } = useTools();
@@ -26,66 +26,6 @@ export function SettingsView() {
     { id: 'everything-claude-code:go-review', name: 'Go Review' },
     { id: 'everything-claude-code:security-reviewer', name: 'Security Reviewer' },
   ];
-
-  const handleProviderChange = async (slot: 'primary' | 'fallback' | 'image', providerId: string) => {
-    const provider = PROVIDER_PRESETS.find(p => p.id === providerId);
-    if (!provider) return;
-
-    const currentModel = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-    const firstModel = provider.models[0];
-
-    if (firstModel) {
-      const newModel: ModelConfig = {
-        id: firstModel.id,
-        name: firstModel.name,
-        provider: providerId,
-        baseUrl: provider.defaultBaseUrl,
-        apiKey: currentModel?.apiKey,
-      };
-
-      if (slot === 'primary') await setPrimaryModel(newModel);
-      else if (slot === 'fallback') await setFallbackModel(newModel);
-      else await setImageModel(newModel);
-    }
-  };
-
-  const handleModelChange = async (slot: 'primary' | 'fallback' | 'image', modelId: string) => {
-    const currentModel = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-    const provider = PROVIDER_PRESETS.find(p => p.id === currentModel?.provider);
-    const model = provider?.models.find(m => m.id === modelId);
-
-    if (model && currentModel) {
-      const newModel: ModelConfig = {
-        ...currentModel,
-        id: model.id,
-        name: model.name,
-      };
-
-      if (slot === 'primary') await setPrimaryModel(newModel);
-      else if (slot === 'fallback') await setFallbackModel(newModel);
-      else await setImageModel(newModel);
-    }
-  };
-
-  const handleApiKeyChange = async (slot: 'primary' | 'fallback' | 'image', apiKey: string) => {
-    const currentModel = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-    if (currentModel) {
-      const newModel: ModelConfig = { ...currentModel, apiKey };
-      if (slot === 'primary') await setPrimaryModel(newModel);
-      else if (slot === 'fallback') await setFallbackModel(newModel);
-      else await setImageModel(newModel);
-    }
-  };
-
-  const handleBaseUrlChange = async (slot: 'primary' | 'fallback' | 'image', baseUrl: string) => {
-    const currentModel = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-    if (currentModel) {
-      const newModel: ModelConfig = { ...currentModel, baseUrl };
-      if (slot === 'primary') await setPrimaryModel(newModel);
-      else if (slot === 'fallback') await setFallbackModel(newModel);
-      else await setImageModel(newModel);
-    }
-  };
 
   const handleSkillToggle = async (skillId: string) => {
     const newSkills = skills.includes(skillId)
@@ -106,7 +46,11 @@ export function SettingsView() {
     setShowAddModelModal(true);
   };
 
-  const handleRemoveModel = async (modelId: string) => {
+  const handleRemoveModel = async (modelId: string, isPrimary: boolean) => {
+    if (isPrimary) {
+      alert(TEXTS.settings.cannotRemovePrimary);
+      return;
+    }
     if (confirm(`Remove model "${modelId}"?`)) {
       await removeModel(modelId);
     }
@@ -119,8 +63,51 @@ export function SettingsView() {
         <p className="subtitle">{TEXTS.settings.modelConfigSubtitle}</p>
       </div>
 
-      {/* Model List - shown first */}
-      <div className="model-list-section">
+      {/* Model Status - Read-only, shown first */}
+      <div className="model-slots-section">
+        <h3 style={{ marginBottom: '16px' }}>{TEXTS.settings.modelStatus}</h3>
+        <div className="models-grid">
+          {(['primary', 'fallback', 'image'] as const).map((slot) => {
+            const model = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
+
+            return (
+              <div key={slot} className="model-slot">
+                <div className="model-slot-header">
+                  <span>{slot === 'primary' ? TEXTS.settings.primaryModel : slot === 'fallback' ? TEXTS.settings.fallbackModel : TEXTS.settings.imageModel}</span>
+                  <span className={`badge ${slot === 'primary' ? 'badge-primary' : 'badge-secondary'}`}>
+                    {slot === 'primary' ? TEXTS.settings.required : TEXTS.settings.optional}
+                  </span>
+                </div>
+                {model ? (
+                  <div className="model-status-info">
+                    <div className="status-row">
+                      <span className="status-label">{TEXTS.settings.provider}:</span>
+                      <span className="status-value">{model.provider}</span>
+                    </div>
+                    <div className="status-row">
+                      <span className="status-label">{TEXTS.settings.model}:</span>
+                      <span className="status-value">{model.name} ({model.id})</span>
+                    </div>
+                    <div className="status-row">
+                      <span className="status-label">{TEXTS.settings.baseUrl}:</span>
+                      <span className="status-value">{model.baseUrl || '-'}</span>
+                    </div>
+                    <div className="status-row">
+                      <span className="status-label">{TEXTS.settings.apiKeyLabel}:</span>
+                      <span className="status-value">{model.apiKey ? '••••••••' : TEXTS.settings.notSet}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="help-text">{TEXTS.settings.notConfigured}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Model List */}
+      <div className="model-list-section" style={{ marginTop: '32px' }}>
         <div className="section-subheader">
           <h3>{TEXTS.settings.modelList}</h3>
           <button className="btn btn-sm" onClick={() => { setEditingModel(null); setShowAddModelModal(true); }}>
@@ -131,96 +118,35 @@ export function SettingsView() {
           <p className="help-text">{TEXTS.settings.noSavedModels}</p>
         ) : (
           <div className="models-list">
-            {savedModels.map(model => (
-              <div key={model.id} className="model-item">
-                <div className="model-item-info">
-                  <span className="model-item-name">{model.name}</span>
-                  <span className="model-item-id">{model.provider}/{model.id}{model.baseUrl ? ` • ${model.baseUrl}` : ''}</span>
-                  <span className="model-item-id">{model.apiKey ? TEXTS.settings.apiKeyConfigured : TEXTS.settings.noApiKey}</span>
+            {savedModels.map(model => {
+              const isPrimary = primaryModel?.id === model.id && primaryModel?.provider === model.provider;
+              return (
+                <div key={model.id} className="model-item">
+                  <div className="model-item-info">
+                    <span className="model-item-name">
+                      {model.name}
+                      {isPrimary && <span className="badge badge-primary" style={{ marginLeft: '8px' }}>{TEXTS.settings.primaryModel}</span>}
+                    </span>
+                    <span className="model-item-id">{model.provider}/{model.id}{model.baseUrl ? ` • ${model.baseUrl}` : ''}</span>
+                    <span className="model-item-id">{model.apiKey ? TEXTS.settings.apiKeyConfigured : TEXTS.settings.noApiKey}</span>
+                  </div>
+                  <div className="model-item-actions">
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEditModel(model.id)}>
+                      {TEXTS.settings.edit}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleRemoveModel(model.id, isPrimary)}
+                      disabled={isPrimary}
+                    >
+                      {TEXTS.settings.remove}
+                    </button>
+                  </div>
                 </div>
-                <div className="model-item-actions">
-                  <button className="btn btn-sm btn-secondary" onClick={() => handleEditModel(model.id)}>
-                    {TEXTS.settings.edit}
-                  </button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleRemoveModel(model.id)}>
-                    {TEXTS.settings.remove}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-      </div>
-
-      {/* Model Configuration Slots */}
-      <div className="model-slots-section" style={{ marginTop: '32px' }}>
-        <h3 style={{ marginBottom: '16px' }}>Model Slots Configuration</h3>
-        <div className="models-grid">
-          {(['primary', 'fallback', 'image'] as const).map((slot) => {
-            const model = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-            const provider = PROVIDER_PRESETS.find(p => p.id === model?.provider);
-
-            return (
-              <div key={slot} className="model-slot">
-                <div className="model-slot-header">
-                  <span>{slot === 'primary' ? TEXTS.settings.primaryModel : slot === 'fallback' ? TEXTS.settings.fallbackModel : TEXTS.settings.imageModel}</span>
-                  <span className={`badge ${slot === 'primary' ? 'badge-primary' : 'badge-secondary'}`}>
-                    {slot === 'primary' ? TEXTS.settings.required : TEXTS.settings.optional}
-                  </span>
-                </div>
-
-                <select
-                  className="form-select form-select-sm"
-                  value={model?.provider || ''}
-                  onChange={(e) => handleProviderChange(slot, e.target.value)}
-                >
-                  <option value="">{TEXTS.settings.selectProvider}</option>
-                  {PROVIDER_PRESETS.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-
-                <select
-                  className="form-select form-select-sm"
-                  style={{ marginTop: '8px' }}
-                  value={model?.id || ''}
-                  onChange={(e) => handleModelChange(slot, e.target.value)}
-                  disabled={!model?.provider}
-                >
-                  <option value="">{TEXTS.settings.selectModel}</option>
-                  {provider?.models.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-
-                <div className="input-group input-group-sm" style={{ marginTop: '8px' }}>
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder={TEXTS.settings.apiKey}
-                    value={model?.apiKey || ''}
-                    onChange={(e) => handleApiKeyChange(slot, e.target.value)}
-                  />
-                </div>
-
-                <input
-                  type="text"
-                  className="form-input form-input-sm"
-                  placeholder={TEXTS.settings.baseUrl}
-                  value={model?.baseUrl || ''}
-                  onChange={(e) => handleBaseUrlChange(slot, e.target.value)}
-                  style={{ marginTop: '8px' }}
-                />
-
-                {model && (
-                  <div className="model-info-sm" style={{ marginTop: '8px' }}>
-                    {model.provider} • {model.id}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
