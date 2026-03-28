@@ -1,0 +1,270 @@
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import { OpenClawConfig, GatewayStatus, ModelConfig } from '@shared/types';
+import { ipc } from '../lib/ipc';
+
+export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
+
+interface AppState {
+  view: AppView;
+  config: OpenClawConfig | null;
+  gatewayStatus: GatewayStatus | null;
+  savedModels: ModelConfig[];
+  skills: string[];
+  tools: string[];
+  isLoading: boolean;
+  error: string | null;
+  initialViewLoaded: boolean;
+}
+
+type Action =
+  | { type: 'SET_VIEW'; payload: AppView }
+  | { type: 'SET_CONFIG'; payload: OpenClawConfig }
+  | { type: 'SET_GATEWAY_STATUS'; payload: GatewayStatus }
+  | { type: 'SET_SAVED_MODELS'; payload: ModelConfig[] }
+  | { type: 'SET_SKILLS'; payload: string[] }
+  | { type: 'SET_TOOLS'; payload: string[] }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_INITIAL_VIEW_LOADED'; payload: boolean }
+  | { type: 'UPDATE_MODEL'; payload: { slot: 'primary' | 'fallback' | 'image'; model: ModelConfig | null } };
+
+const initialState: AppState = {
+  view: 'install',
+  config: null,
+  gatewayStatus: null,
+  savedModels: [],
+  skills: [],
+  tools: [],
+  isLoading: true,
+  error: null,
+  initialViewLoaded: false,
+};
+
+function appReducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'SET_VIEW':
+      return { ...state, view: action.payload };
+    case 'SET_CONFIG':
+      return { ...state, config: action.payload };
+    case 'SET_GATEWAY_STATUS':
+      return { ...state, gatewayStatus: action.payload };
+    case 'SET_SAVED_MODELS':
+      return { ...state, savedModels: action.payload };
+    case 'SET_SKILLS':
+      return { ...state, skills: action.payload };
+    case 'SET_TOOLS':
+      return { ...state, tools: action.payload };
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'SET_INITIAL_VIEW_LOADED':
+      return { ...state, initialViewLoaded: action.payload };
+    case 'UPDATE_MODEL':
+      if (!state.config) return state;
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          settings: {
+            ...state.config.settings,
+            [action.payload.slot === 'primary' ? 'model' : action.payload.slot === 'fallback' ? 'fallbackModel' : 'imageModel']: action.payload.model,
+          },
+        },
+      };
+    default:
+      return state;
+  }
+}
+
+const AppContext = createContext<{
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+}>({
+  state: initialState,
+  dispatch: () => {},
+});
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Determine initial view based on installation and config status
+  useEffect(() => {
+    async function checkInitialView() {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+
+        const installCheck = await ipc.checkInstall();
+        const config = await ipc.getConfig();
+
+        dispatch({ type: 'SET_CONFIG', payload: config });
+        dispatch({ type: 'SET_SKILLS', payload: config.settings.skills?.enabled || [] });
+        dispatch({ type: 'SET_TOOLS', payload: config.settings.tools?.enabled || [] });
+        dispatch({ type: 'SET_SAVED_MODELS', payload: config.settings.savedModels || [] });
+
+        let initialView: AppView = 'terminal';
+        if (!installCheck.installed) {
+          initialView = 'install';
+        } else if (!config.settings.model) {
+          initialView = 'setup';
+        }
+
+        dispatch({ type: 'SET_VIEW', payload: initialView });
+        dispatch({ type: 'SET_INITIAL_VIEW_LOADED', payload: true });
+      } catch (error) {
+        dispatch({ type: 'SET_ERROR', payload: (error as Error).message });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }
+
+    checkInitialView();
+  }, []);
+
+  // Poll gateway status
+  useEffect(() => {
+    if (!state.initialViewLoaded) return;
+
+    async function pollGateway() {
+      try {
+        const status = await ipc.getGatewayStatus();
+        dispatch({ type: 'SET_GATEWAY_STATUS', payload: status });
+      } catch (error) {
+        console.error('Failed to get gateway status:', error);
+      }
+    }
+
+    pollGateway();
+    const interval = setInterval(pollGateway, 5000);
+    return () => clearInterval(interval);
+  }, [state.initialViewLoaded]);
+
+  return (
+    <AppContext.Provider value={{ state, dispatch }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context;
+}
+
+export function useSetView() {
+  const { dispatch } = useApp();
+  return useCallback((view: AppView) => {
+    dispatch({ type: 'SET_VIEW', payload: view });
+  }, [dispatch]);
+}
+
+export function useConfig() {
+  const { state, dispatch } = useApp();
+
+  const refreshConfig = useCallback(async () => {
+    const config = await ipc.getConfig();
+    dispatch({ type: 'SET_CONFIG', payload: config });
+  }, [dispatch]);
+
+  return { config: state.config, refreshConfig };
+}
+
+export function useModels() {
+  const { state, dispatch } = useApp();
+
+  const addModel = useCallback(async (model: ModelConfig) => {
+    await ipc.addModel(model);
+    const models = await ipc.getSavedModels();
+    dispatch({ type: 'SET_SAVED_MODELS', payload: models });
+  }, [dispatch]);
+
+  const updateModel = useCallback(async (model: ModelConfig) => {
+    await ipc.updateModel(model);
+    const models = await ipc.getSavedModels();
+    dispatch({ type: 'SET_SAVED_MODELS', payload: models });
+  }, [dispatch]);
+
+  const removeModel = useCallback(async (modelId: string) => {
+    await ipc.removeModel(modelId);
+    const models = await ipc.getSavedModels();
+    dispatch({ type: 'SET_SAVED_MODELS', payload: models });
+  }, [dispatch]);
+
+  const setPrimaryModel = useCallback(async (model: ModelConfig | null) => {
+    if (model) {
+      await ipc.setModel(model);
+    }
+    const config = await ipc.getConfig();
+    dispatch({ type: 'SET_CONFIG', payload: config });
+  }, [dispatch]);
+
+  const setFallbackModel = useCallback(async (model: ModelConfig | null) => {
+    await ipc.setFallbackModel(model);
+    const config = await ipc.getConfig();
+    dispatch({ type: 'SET_CONFIG', payload: config });
+  }, [dispatch]);
+
+  const setImageModel = useCallback(async (model: ModelConfig | null) => {
+    await ipc.setImageModel(model);
+    const config = await ipc.getConfig();
+    dispatch({ type: 'SET_CONFIG', payload: config });
+  }, [dispatch]);
+
+  return {
+    savedModels: state.savedModels,
+    primaryModel: state.config?.settings.model || null,
+    fallbackModel: state.config?.settings.fallbackModel || null,
+    imageModel: state.config?.settings.imageModel || null,
+    addModel,
+    updateModel,
+    removeModel,
+    setPrimaryModel,
+    setFallbackModel,
+    setImageModel,
+  };
+}
+
+export function useGateway() {
+  const { state, dispatch } = useApp();
+
+  const restartGateway = useCallback(async () => {
+    const status = await ipc.restartGateway();
+    dispatch({ type: 'SET_GATEWAY_STATUS', payload: status });
+  }, [dispatch]);
+
+  return {
+    gatewayStatus: state.gatewayStatus,
+    restartGateway,
+  };
+}
+
+export function useSkills() {
+  const { state, dispatch } = useApp();
+
+  const setSkills = useCallback(async (skills: string[]) => {
+    await ipc.setSkills(skills);
+    dispatch({ type: 'SET_SKILLS', payload: skills });
+  }, [dispatch]);
+
+  return {
+    skills: state.skills,
+    setSkills,
+  };
+}
+
+export function useTools() {
+  const { state, dispatch } = useApp();
+
+  const setTools = useCallback(async (tools: string[]) => {
+    await ipc.setTools(tools);
+    dispatch({ type: 'SET_TOOLS', payload: tools });
+  }, [dispatch]);
+
+  return {
+    tools: state.tools,
+    setTools,
+  };
+}

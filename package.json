@@ -11,13 +11,15 @@
     "url": "https://github.com/lightconsen/clawrap.git"
   },
   "scripts": {
-    "clean": "rm -rf dist",
-    "dev": "npm run clean && NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal dist/renderer/settings && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html src/renderer/terminal/*.png dist/renderer/terminal/ 2>/dev/null; cp src/renderer/settings/*.html src/renderer/settings/*.css dist/renderer/settings/ 2>/dev/null; NODE_ENV=development electron .",
+    "clean": "rm -rf dist release node_modules/.cache",
+    "dev:vite": "vite",
+    "dev": "npm run clean && npm run build:vite && npm run build:ts && NODE_ENV=development electron .",
+    "build:vite": "vite build",
     "build:ts": "tsc && tsc -p tsconfig.renderer.json",
-    "build": "npm run build:ts && electron-builder",
-    "build:mac": "npm run build:ts && electron-builder --mac",
-    "build:win": "npm run build:ts && electron-builder --win",
-    "build:linux": "npm run build:ts && electron-builder --linux",
+    "build": "npm run build:vite && npm run build:ts && electron-builder",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:win": "npm run build && electron-builder --win",
+    "build:linux": "npm run build && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps",
     "build:openclaw": "bash scripts/build-standalone.sh",
     "download-node": "bash scripts/download-node.sh",
@@ -25,7 +27,6 @@
     "remove:openclaw": "npm uninstall -g openclaw 2>/dev/null; pnpm uninstall -g openclaw 2>/dev/null; echo 'OpenClaw npm package removed'",
     "remove:data": "read -p 'Remove all OpenClaw data (~/.openclaw)? [y/N] ' confirm && [ \"$confirm\" = \"y\" ] && rm -rf ~/.openclaw && echo 'OpenClaw data removed' || echo 'Skipped data removal'",
     "remove:config": "rm -rf ~/Library/Application\\ Support/OpenClaw && echo 'Electron config removed'",
-    "clean": "rm -rf dist release node_modules/.cache",
     "remove:all": "npm run remove:gateway && npm run remove:openclaw && npm run remove:data && npm run remove:config && npm run clean && echo 'Full removal complete'"
   },
   "dependencies": {
@@ -33,14 +34,20 @@
     "electron-updater": "^6.1.0",
     "fs-extra": "^11.0.0",
     "js-yaml": "^4.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.0",
     "@types/node": "^20.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "electron": "41.0.4",
     "electron-builder": "^24.0.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vite": "^8.0.3"
   },
   "build": {
     "appId": "com.openclaw.desktop",
@@ -65,11 +72,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "hardenedRuntime": true,
@@ -82,11 +95,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "verifyUpdateCodeSignature": false
@@ -96,15 +113,21 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "rpm",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Development"

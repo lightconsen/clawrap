@@ -1,0 +1,65 @@
+import React, { useState, useEffect } from 'react';
+import { useApp, useSetView, useGateway, useModels } from '../store/appStore';
+import { TEXTS } from '../lib/texts';
+import { AddModelModal } from './AddModelModal';
+
+export function TerminalView() {
+  const setView = useSetView();
+  const { gatewayStatus } = useGateway();
+  const [showSettings, setShowSettings] = useState(false);
+  const [terminalUrl, setTerminalUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (gatewayStatus?.port) {
+      let url = `http://localhost:${gatewayStatus.port}/`;
+      if (gatewayStatus.token) {
+        url += `?token=${encodeURIComponent(gatewayStatus.token)}`;
+      }
+      setTerminalUrl(url);
+    }
+  }, [gatewayStatus?.port, gatewayStatus?.token]);
+
+  return (
+    <div className="terminal-view">
+      <div className="terminal-header">
+        <div className="terminal-title">
+          <h1>{TEXTS.terminal.title}</h1>
+          <div className="gateway-status">
+            <span className={`status-indicator ${gatewayStatus?.running ? 'status-running' : 'status-stopped'}`}></span>
+            <span>{gatewayStatus?.running ? TEXTS.terminal.running : TEXTS.terminal.stopped}</span>
+            {gatewayStatus?.port && <span className="port-info">{TEXTS.terminal.port}: {gatewayStatus.port}</span>}
+          </div>
+        </div>
+        <div className="terminal-actions">
+          <button className="btn-icon" onClick={() => setView('settings')} title={TEXTS.terminal.openSettings}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="terminal-content">
+        {terminalUrl ? (
+          <iframe
+            src={terminalUrl}
+            title="ClawRap"
+            className="terminal-frame"
+          />
+        ) : (
+          <div className="loading-screen">
+            <div className="loading-spinner"></div>
+            <p>{TEXTS.common.loading}</p>
+          </div>
+        )}
+      </div>
+
+      {showSettings && (
+        <AddModelModal
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </div>
+  );
+}

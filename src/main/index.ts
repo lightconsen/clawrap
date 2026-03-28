@@ -10,13 +10,9 @@ const isDev = process.env.NODE_ENV === 'development';
 
 class OpenClawApp {
   private mainWindow: BrowserWindow | null = null;
-  private setupWindow: BrowserWindow | null = null;
-  private installWindow: BrowserWindow | null = null;
   private tray: Tray | null = null;
   private gatewayManager: GatewayManager;
   private configManager: ConfigManager;
-  private installCompleted: boolean = false;
-  private setupCompleted: boolean = false;
 
   constructor() {
     this.configManager = new ConfigManager();
@@ -57,26 +53,10 @@ class OpenClawApp {
       setTimeout(() => checkForUpdates(), 5000);
     }
 
-    // Check if OpenClaw is installed
-    const installCheck = await this.gatewayManager.checkInstallation();
-
-    if (!installCheck.installed) {
-      // OpenClaw not installed - show installation window
-      await this.createInstallWindow();
-    } else {
-      log.info(`OpenClaw found at: ${installCheck.path}, version: ${installCheck.version || 'unknown'}`);
-
-      // Check if first run (no model configured)
-      const config = this.configManager.getConfig();
-
-      if (!config.settings.model) {
-        // First run - show setup wizard
-        await this.createSetupWindow();
-      } else {
-        // Normal run - start gateway and show main window
-        await this.startGatewayAndShowMain();
-      }
-    }
+    // Start gateway and create main window
+    const port = await this.gatewayManager.start();
+    log.info(`Gateway started on port ${port}`);
+    await this.createMainWindow(port);
 
     // App event handlers
     app.on('window-all-closed', this.handleWindowAllClosed.bind(this));
@@ -200,8 +180,6 @@ class OpenClawApp {
 
     ipcMain.handle('skills:install', async (_event, skillId: string) => {
       try {
-        // Skills are enabled/disabled via config, no actual installation needed
-        // Just enable the skill in config
         const config = this.configManager.getConfig();
         const enabledSkills = config.settings.skills?.enabled || [];
 
@@ -242,57 +220,14 @@ class OpenClawApp {
     });
 
     ipcMain.handle('install:complete', async () => {
-      log.info('>>> install:complete handler called <<<');
-
-      // Mark installation as completed so window closed handler doesn't quit app
-      this.installCompleted = true;
-
-      try {
-        log.info('Getting config...');
-        const config = this.configManager.getConfig();
-        log.info(`Config retrieved. Model value: ${JSON.stringify(config.settings.model)}`);
-        log.info(`Install complete - checking config. Model configured: ${!!config.settings.model}`);
-
-        if (!config.settings.model) {
-          // Create setup window first, then close install window
-          log.info('No model configured, showing setup window');
-          await this.createSetupWindow();
-          if (this.installWindow) {
-            this.installWindow.close();
-            this.installWindow = null;
-          }
-        } else {
-          // Close install window first, then start gateway
-          log.info('Model already configured, starting main window');
-          if (this.installWindow) {
-            this.installWindow.close();
-            this.installWindow = null;
-          }
-          await this.startGatewayAndShowMain();
-        }
-        log.info('>>> install:complete handler finished successfully <<<');
-        return true;
-      } catch (error) {
-        log.error('!!! Error in install:complete handler:', error);
-        throw error;
-      }
+      // Just acknowledge - React app handles navigation
+      return true;
     });
 
     // Setup IPC
     ipcMain.handle('setup:complete', async (_event, config: { model: ModelConfig; apiKey: string }) => {
-      // Mark setup as completed so window closed handler doesn't quit app
-      this.setupCompleted = true;
-
       await this.configManager.setModel(config.model);
       await this.configManager.setApiKey(config.apiKey);
-
-      // Close setup window and open main window
-      if (this.setupWindow) {
-        this.setupWindow.close();
-        this.setupWindow = null;
-      }
-
-      await this.startGatewayAndShowMain();
       return true;
     });
 
@@ -305,116 +240,10 @@ class OpenClawApp {
       shell.openExternal(url);
     });
 
-    // Settings window
+    // Settings - now just a view change, no separate window
     ipcMain.handle('app:openSettings', async () => {
-      await this.createSettingsWindow();
-    });
-
-    // Settings API - get all data needed for settings page
-    ipcMain.handle('settings:get', async () => {
-      const appDataPath = process.env.HOME || process.env.USERPROFILE || '';
-      return {
-        config: this.configManager.getConfig(),
-        status: this.gatewayManager.getStatus(),
-        installCheck: await this.gatewayManager.checkInstallation(),
-        configDir: `${appDataPath}/.openclaw`
-      };
-    });
-  }
-
-  private async createSetupWindow(): Promise<void> {
-    log.info('Creating setup window...');
-    try {
-      this.setupWindow = new BrowserWindow({
-        width: 600,
-        height: 500,
-        resizable: true,
-        maximizable: true,
-        minimizable: true,
-        webPreferences: {
-          preload: path.join(__dirname, '../preload/index.js'),
-          contextIsolation: true,
-          nodeIntegration: false
-        },
-        title: 'OpenClaw Setup',
-        icon: this.getIconPath()
-      });
-
-      const setupHtmlPath = path.join(__dirname, '../renderer/setup/index.html');
-      log.info(`Loading setup HTML from: ${setupHtmlPath}`);
-      await this.setupWindow.loadFile(setupHtmlPath);
-      log.info('Setup window loaded successfully');
-
-      this.setupWindow.on('closed', () => {
-        this.setupWindow = null;
-        // If setup was cancelled (no main window and setup not completed), quit app
-        if (!this.mainWindow && !this.setupCompleted) {
-          app.quit();
-        }
-      });
-    } catch (error) {
-      log.error('Failed to create setup window:', error);
-      throw error;
-    }
-  }
-
-  private async createSettingsWindow(): Promise<void> {
-    log.info('Creating settings window...');
-    try {
-      const settingsWindow = new BrowserWindow({
-        width: 1000,
-        height: 700,
-        resizable: true,
-        maximizable: true,
-        minimizable: true,
-        webPreferences: {
-          preload: path.join(__dirname, '../preload/index.js'),
-          contextIsolation: true,
-          nodeIntegration: false
-        },
-        title: 'OpenClaw Settings',
-        icon: this.getIconPath(),
-        parent: this.mainWindow || undefined
-      });
-
-      const settingsHtmlPath = path.join(__dirname, '../renderer/settings/index.html');
-      log.info(`Loading settings HTML from: ${settingsHtmlPath}`);
-      await settingsWindow.loadFile(settingsHtmlPath);
-      log.info('Settings window loaded successfully');
-
-      settingsWindow.on('closed', () => {
-        // Window closed, no cleanup needed
-      });
-    } catch (error) {
-      log.error('Failed to create settings window:', error);
-    }
-  }
-
-  private async createInstallWindow(): Promise<void> {
-    this.installWindow = new BrowserWindow({
-      width: 600,
-      height: 500,
-      resizable: true,
-      maximizable: true,
-      minimizable: true,
-      webPreferences: {
-        preload: path.join(__dirname, '../preload/index.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      title: 'Install OpenClaw',
-      icon: this.getIconPath()
-    });
-
-    const installHtmlPath = path.join(__dirname, '../renderer/install/index.html');
-    await this.installWindow.loadFile(installHtmlPath);
-
-    this.installWindow.on('closed', () => {
-      this.installWindow = null;
-      // If install was cancelled (no other window and install not completed), quit app
-      if (!this.mainWindow && !this.setupWindow && !this.installCompleted) {
-        app.quit();
-      }
+      // Notify renderer to show settings view
+      this.mainWindow?.webContents.send('show-settings');
     });
   }
 
@@ -429,40 +258,25 @@ class OpenClawApp {
         contextIsolation: true,
         nodeIntegration: false,
         additionalArguments: [`--gateway-port=${gatewayPort}`],
-        devTools: true
+        devTools: isDev
       },
       title: 'OpenClaw',
       icon: this.getIconPath(),
-      show: false // Show when ready
+      show: false
     });
 
     // Configure webRequest to strip CSP headers that prevent framing
     this.configureGatewayCSP(gatewayPort);
 
-    // Inject gateway info BEFORE loading the page
-    // This ensures window.__OPENCLAW_* variables are available immediately
-    this.mainWindow.webContents.on('dom-ready', () => {
-      this.mainWindow?.webContents.executeJavaScript(`
-        window.__OPENCLAW_GATEWAY_PORT__ = ${gatewayPort};
-        window.__OPENCLAW_GATEWAY_TOKEN__ = ${JSON.stringify(this.gatewayManager.getStatus().token || null)};
-        window.__OPENCLAW_CONFIG__ = ${JSON.stringify(this.configManager.getConfig())};
-        console.log('[OpenClaw Desktop] Gateway config injected:', {
-          port: window.__OPENCLAW_GATEWAY_PORT__,
-          hasToken: !!window.__OPENCLAW_GATEWAY_TOKEN__
-        });
-      `);
-    });
-
-    // Load the terminal UI
-    const terminalHtmlPath = path.join(__dirname, '../renderer/terminal/index.html');
-    log.info(`Loading terminal from: ${terminalHtmlPath}`);
+    // Load the React app
+    const rendererIndexPath = path.join(__dirname, '../renderer/index.html');
+    log.info(`Loading React app from: ${rendererIndexPath}`);
 
     try {
-      await this.mainWindow.loadFile(terminalHtmlPath);
-      log.info('Terminal HTML loaded successfully');
+      await this.mainWindow.loadFile(rendererIndexPath);
+      log.info('React app loaded successfully');
     } catch (error) {
-      log.error('Failed to load terminal HTML:', error);
-      // Try to show window anyway
+      log.error('Failed to load React app:', error);
       this.mainWindow.show();
       return;
     }
@@ -470,10 +284,12 @@ class OpenClawApp {
     this.mainWindow.once('ready-to-show', () => {
       log.info('Main window ready to show');
       this.mainWindow?.show();
-      this.mainWindow?.webContents.openDevTools();
+      if (isDev) {
+        this.mainWindow?.webContents.openDevTools();
+      }
     });
 
-    // Fallback: show window after a timeout even if ready-to-show didn't fire
+    // Fallback: show window after a timeout
     setTimeout(() => {
       if (this.mainWindow && !this.mainWindow.isVisible()) {
         log.info('Showing window via timeout fallback');
@@ -494,7 +310,6 @@ class OpenClawApp {
 
   /**
    * Configure webRequest to strip CSP headers that prevent framing gateway content.
-   * The gateway sends frame-ancestors 'none' which prevents embedding in our iframe.
    */
   private configureGatewayCSP(gatewayPort: number): void {
     if (!this.mainWindow) return;
@@ -502,11 +317,10 @@ class OpenClawApp {
     const { session } = this.mainWindow.webContents;
 
     session.webRequest.onHeadersReceived({
-      urls: [`http://127.0.0.1:${gatewayPort}/*`]
+      urls: [`http://127.0.0.1:${gatewayPort}/*`, `http://localhost:${gatewayPort}/*`]
     }, (details, callback) => {
       const responseHeaders = details.responseHeaders || {};
 
-      // Remove or modify CSP headers that prevent framing
       const cspHeaders = [
         'content-security-policy',
         'Content-Security-Policy',
@@ -528,20 +342,7 @@ class OpenClawApp {
     log.info(`Configured CSP stripping for gateway on port ${gatewayPort}`);
   }
 
-  private async startGatewayAndShowMain(): Promise<void> {
-    try {
-      const port = await this.gatewayManager.start();
-      log.info(`Gateway started on port ${port}`);
-      await this.createMainWindow(port);
-    } catch (error) {
-      log.error('Failed to start gateway:', error);
-      // Show error dialog or retry
-      throw error;
-    }
-  }
-
   private createTray(): void {
-    // Use a placeholder icon - replace with actual icon
     const iconPath = this.getIconPath();
     this.tray = new Tray(iconPath);
 
@@ -549,11 +350,7 @@ class OpenClawApp {
       {
         label: 'Show OpenClaw',
         click: () => {
-          if (this.mainWindow) {
-            this.mainWindow.show();
-          } else if (this.setupWindow) {
-            this.setupWindow.show();
-          }
+          this.mainWindow?.show();
         }
       },
       { type: 'separator' },
@@ -583,9 +380,7 @@ class OpenClawApp {
     this.tray.setContextMenu(contextMenu);
 
     this.tray.on('click', () => {
-      if (this.mainWindow) {
-        this.mainWindow.show();
-      }
+      this.mainWindow?.show();
     });
   }
 
@@ -610,8 +405,8 @@ class OpenClawApp {
           {
             label: 'Settings...',
             accelerator: 'CmdOrCtrl+,',
-            click: async () => {
-              await this.createSettingsWindow();
+            click: () => {
+              this.mainWindow?.webContents.send('show-settings');
             }
           },
           { type: 'separator' },
@@ -709,34 +504,36 @@ class OpenClawApp {
   }
 
   private getIconPath(): string {
-    // Return platform-specific icon path
     const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
     return path.join(__dirname, '../../build', iconName);
   }
 
   private handleWindowAllClosed(): void {
     // On macOS, don't quit when windows close - user can reactivate from dock
-    // Also don't quit if setup was just completed and main window is starting
-    if (process.platform !== 'darwin' && !this.setupCompleted) {
+    if (process.platform !== 'darwin') {
       app.quit();
     }
   }
 
   private async handleActivate(): Promise<void> {
-    if (this.mainWindow === null && this.setupWindow === null) {
-      const config = this.configManager.getConfig();
-      if (config.settings.model) {
-        await this.startGatewayAndShowMain();
-      } else {
-        await this.createSetupWindow();
-      }
+    if (!this.mainWindow) {
+      await this.startGatewayAndShowMain();
+    }
+  }
+
+  private async startGatewayAndShowMain(): Promise<void> {
+    try {
+      const port = await this.gatewayManager.start();
+      log.info(`Gateway restarted on port ${port}`);
+      await this.createMainWindow(port);
+    } catch (error) {
+      log.error('Failed to start gateway:', error);
+      throw error;
     }
   }
 
   private async handleBeforeQuit(): Promise<void> {
     log.info('App quitting - gateway will continue running in background');
-    // Note: We intentionally do NOT stop the gateway here
-    // The gateway continues running after the app closes
   }
 }
 
