@@ -11,7 +11,8 @@
     "url": "https://github.com/lightconsen/clawrap.git"
   },
   "scripts": {
-    "dev": "NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal dist/renderer/settings && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html src/renderer/terminal/*.png dist/renderer/terminal/ 2>/dev/null; cp src/renderer/settings/*.html src/renderer/settings/*.css dist/renderer/settings/ 2>/dev/null; NODE_ENV=development electron .",
+    "clean": "rm -rf dist",
+    "dev": "npm run clean && NODE_ENV=development npm run build:ts && mkdir -p dist/renderer/setup dist/renderer/install dist/renderer/terminal dist/renderer/settings && cp src/renderer/setup/*.html src/renderer/setup/*.css dist/renderer/setup/ 2>/dev/null; cp src/renderer/install/*.html src/renderer/install/*.css dist/renderer/install/ 2>/dev/null; cp src/renderer/terminal/*.html src/renderer/terminal/*.png dist/renderer/terminal/ 2>/dev/null; cp src/renderer/settings/*.html src/renderer/settings/*.css dist/renderer/settings/ 2>/dev/null; NODE_ENV=development electron .",
     "build:ts": "tsc && tsc -p tsconfig.renderer.json",
     "build": "npm run build:ts && electron-builder",
     "build:mac": "npm run build:ts && electron-builder --mac",
