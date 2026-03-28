@@ -715,8 +715,11 @@ class OpenClawApp {
   }
 
   private handleWindowAllClosed(): void {
-    // Quit app when all windows are closed (on all platforms)
-    app.quit();
+    // On macOS, don't quit when windows close - user can reactivate from dock
+    // Also don't quit if setup was just completed and main window is starting
+    if (process.platform !== 'darwin' && !this.setupCompleted) {
+      app.quit();
+    }
   }
 
   private async handleActivate(): Promise<void> {
