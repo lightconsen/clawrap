@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp, useSetView } from '../store/appStore';
 import { ipc } from '../lib/ipc';
 import { TEXTS } from '../lib/texts';
+import logo from '../assets/icon.png';
 
 export function InstallView() {
   const setView = useSetView();
@@ -96,7 +97,7 @@ export function InstallView() {
     <div className="install-view">
       <div className="install-container">
         <div className="install-header">
-          <img src="/icon.png" alt="ClawRap Logo" className="install-logo" />
+          <img src={logo} alt="ClawRap Logo" className="install-logo" />
           <h1>{TEXTS.install.title}</h1>
           <p>{TEXTS.install.subtitle}</p>
         </div>

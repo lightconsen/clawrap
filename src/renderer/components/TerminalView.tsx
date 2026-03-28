@@ -13,7 +13,7 @@ export function TerminalView() {
     if (gatewayStatus?.port) {
       let url = `http://localhost:${gatewayStatus.port}/`;
       if (gatewayStatus.token) {
-        url += `?token=${encodeURIComponent(gatewayStatus.token)}`;
+        url += `#token=${encodeURIComponent(gatewayStatus.token)}`;
       }
       setTerminalUrl(url);
     }

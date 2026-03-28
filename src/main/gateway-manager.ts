@@ -453,6 +453,8 @@ export class GatewayManager {
           log.info(`Found existing gateway running on port ${port}`);
           this.externalGatewayDetected = true;
           this.gatewayPort = port;
+          // Reload token from config to match the running gateway
+          this.loadOrCreateGatewayToken();
           return { running: true, port, token: this.gatewayToken || undefined };
         }
       } catch {
