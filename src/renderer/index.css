@@ -102,8 +102,8 @@ body {
 }
 
 .btn-icon {
-  padding: 8px 12px;
-  background: var(--bg-secondary);
+  padding: 6px 10px;
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
@@ -112,7 +112,7 @@ body {
 }
 
 .btn-icon:hover {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   color: var(--text-primary);
 }
 
