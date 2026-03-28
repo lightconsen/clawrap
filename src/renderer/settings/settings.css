@@ -229,6 +229,25 @@ body {
   color: var(--text-secondary);
 }
 
+.auth-method-selector {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.auth-method-selector label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.auth-method-selector input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .btn-icon {
   padding: 10px 14px;
   background: var(--bg-secondary);

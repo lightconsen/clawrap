@@ -40,13 +40,20 @@
               <span>Primary Model</span>
               <span class="badge badge-primary">Required</span>
             </div>
-            <select id="primary-model" class="form-select form-select-sm">
-              <option value="">Select a model...</option>
+            <select id="primary-provider" class="form-select form-select-sm" onchange="onProviderChange('primary')">
+              <option value="">Select provider...</option>
             </select>
+            <select id="primary-model" class="form-select form-select-sm" style="margin-top: 8px;">
+              <option value="">Select model...</option>
+            </select>
+            <div class="auth-method-selector" id="primary-auth-method" style="margin-top: 8px;">
+              <!-- Auth method radio buttons inserted by JS -->
+            </div>
             <div class="input-group input-group-sm" style="margin-top: 8px;">
               <input type="password" id="primary-api-key" class="form-input" placeholder="API Key">
               <button class="btn-icon btn-icon-sm" id="toggle-primary-key" title="Show/Hide">👁</button>
             </div>
+            <input type="text" id="primary-base-url" class="form-input form-input-sm" placeholder="Base URL (optional)" style="margin-top: 8px;" />
             <div class="model-info-sm" id="primary-model-info"></div>
           </div>
 
@@ -56,13 +63,20 @@
               <span>Fallback Model</span>
               <span class="badge badge-secondary">Optional</span>
             </div>
-            <select id="fallback-model" class="form-select form-select-sm">
-              <option value="">None</option>
+            <select id="fallback-provider" class="form-select form-select-sm" onchange="onProviderChange('fallback')">
+              <option value="">Select provider...</option>
             </select>
+            <select id="fallback-model" class="form-select form-select-sm" style="margin-top: 8px;">
+              <option value="">Select model...</option>
+            </select>
+            <div class="auth-method-selector" id="fallback-auth-method" style="margin-top: 8px;">
+              <!-- Auth method radio buttons inserted by JS -->
+            </div>
             <div class="input-group input-group-sm" style="margin-top: 8px;">
               <input type="password" id="fallback-api-key" class="form-input" placeholder="API Key">
               <button class="btn-icon btn-icon-sm" id="toggle-fallback-key" title="Show/Hide">👁</button>
             </div>
+            <input type="text" id="fallback-base-url" class="form-input form-input-sm" placeholder="Base URL (optional)" style="margin-top: 8px;" />
             <div class="model-info-sm" id="fallback-model-info"></div>
           </div>
 
@@ -72,13 +86,20 @@
               <span>Image Model</span>
               <span class="badge badge-secondary">Optional</span>
             </div>
-            <select id="image-model" class="form-select form-select-sm">
-              <option value="">None</option>
+            <select id="image-provider" class="form-select form-select-sm" onchange="onProviderChange('image')">
+              <option value="">Select provider...</option>
             </select>
+            <select id="image-model" class="form-select form-select-sm" style="margin-top: 8px;">
+              <option value="">Select model...</option>
+            </select>
+            <div class="auth-method-selector" id="image-auth-method" style="margin-top: 8px;">
+              <!-- Auth method radio buttons inserted by JS -->
+            </div>
             <div class="input-group input-group-sm" style="margin-top: 8px;">
               <input type="password" id="image-api-key" class="form-input" placeholder="API Key">
               <button class="btn-icon btn-icon-sm" id="toggle-image-key" title="Show/Hide">👁</button>
             </div>
+            <input type="text" id="image-base-url" class="form-input form-input-sm" placeholder="Base URL (optional)" style="margin-top: 8px;" />
             <div class="model-info-sm" id="image-model-info"></div>
           </div>
         </div>

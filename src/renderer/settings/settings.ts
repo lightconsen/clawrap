@@ -1,5 +1,5 @@
 // Settings page logic
-import { ModelConfig, PRESET_MODELS, OpenClawConfig, GatewayStatus } from '../../shared/types';
+import { ModelConfig, PRESET_MODELS, OpenClawConfig, GatewayStatus, PROVIDER_PRESETS, ProviderPreset } from '../../shared/types';
 
 let config: OpenClawConfig | null = null;
 let savedModels: ModelConfig[] = [];
@@ -16,7 +16,7 @@ async function loadSettings() {
     config = await window.electronAPI.getConfig();
     savedModels = await window.electronAPI.getSavedModels();
 
-    populateModelSelects();
+    populateProviderSelects();
     populateSavedModelsList();
     populateCurrentModels();
     populateGatewayStatus();
@@ -25,29 +25,8 @@ async function loadSettings() {
   }
 }
 
-function populateModelSelects() {
-  const providers: Record<string, string> = {
-    'anthropic': 'Anthropic',
-    'openai': 'OpenAI',
-    'google': 'Google',
-    'deepseek': 'DeepSeek',
-    'alibaba': 'Alibaba (DashScope)',
-    'tencent': 'Tencent (Hunyuan)',
-    'baidu': 'Baidu (Qianfan)',
-    'bytedance': 'ByteDance (Doubao)',
-    'xai': 'xAI (Grok)',
-    'mistral': 'Mistral AI',
-    'moonshot': 'Moonshot (Kimi)',
-    'minimax': 'MiniMax',
-    'ollama': 'Ollama (Local)',
-    'openrouter': 'OpenRouter',
-    'together': 'Together AI',
-    'vllm': 'vLLM',
-    'litellm': 'LiteLLM',
-    'custom': 'Custom'
-  };
-
-  const selects = ['primary-model', 'fallback-model', 'image-model'];
+function populateProviderSelects() {
+  const selects = ['primary-provider', 'fallback-provider', 'image-provider'];
 
   selects.forEach(selectId => {
     const select = document.getElementById(selectId) as HTMLSelectElement;
@@ -57,88 +36,105 @@ function populateModelSelects() {
       select.innerHTML = '';
       if (firstOption) select.appendChild(firstOption);
 
-      // Add preset models grouped by provider
-      let currentProvider = '';
-      PRESET_MODELS.forEach(model => {
-        if (model.provider !== currentProvider) {
-          if (currentProvider !== '') {
-            const separator = document.createElement('option');
-            separator.disabled = true;
-            separator.textContent = '──────────';
-            select.appendChild(separator);
-          }
-          currentProvider = model.provider;
-        }
-
+      // Add provider presets
+      PROVIDER_PRESETS.forEach(provider => {
         const option = document.createElement('option');
-        option.value = model.id;
-        option.textContent = model.name;
-        option.dataset.provider = model.provider;
+        option.value = provider.id;
+        option.textContent = provider.name;
         select.appendChild(option);
-      });
-
-      // Add saved models that aren't in presets
-      savedModels.forEach(model => {
-        const exists = PRESET_MODELS.some(m => m.id === model.id);
-        if (!exists) {
-          const option = document.createElement('option');
-          option.value = model.id;
-          option.textContent = model.name;
-          option.dataset.provider = model.provider;
-          select.appendChild(option);
-        }
       });
     }
   });
 }
 
+function onProviderChange(slot: 'primary' | 'fallback' | 'image') {
+  const providerSelect = document.getElementById(`${slot}-provider`) as HTMLSelectElement;
+  const modelSelect = document.getElementById(`${slot}-model`) as HTMLSelectElement;
+  const baseUrlInput = document.getElementById(`${slot}-base-url`) as HTMLInputElement;
+  const authMethodContainer = document.getElementById(`${slot}-auth-method`);
+
+  if (!providerSelect || !modelSelect) return;
+
+  const providerId = providerSelect.value;
+  const provider = PROVIDER_PRESETS.find(p => p.id === providerId);
+
+  // Clear and repopulate model select
+  modelSelect.innerHTML = '<option value="">Select model...</option>';
+  if (provider) {
+    provider.models.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.name;
+      modelSelect.appendChild(option);
+    });
+
+    // Set default base URL
+    if (baseUrlInput && provider.defaultBaseUrl) {
+      baseUrlInput.value = provider.defaultBaseUrl;
+    }
+
+    // Populate auth method selector
+    if (authMethodContainer && provider.authMethods.length > 0) {
+      authMethodContainer.innerHTML = provider.authMethods.map(method => `
+        <label>
+          <input type="radio" name="${slot}-auth-method" value="${method}" ${method === provider.defaultAuthMethod ? 'checked' : ''}>
+          ${method === 'api_key' ? 'API Key' : 'OAuth'}
+        </label>
+      `).join('');
+    }
+  } else {
+    if (baseUrlInput) baseUrlInput.value = '';
+    if (authMethodContainer) authMethodContainer.innerHTML = '';
+  }
+}
+
+// Make globally accessible
+(window as any).onProviderChange = onProviderChange;
+
 function populateCurrentModels() {
   if (!config) return;
 
-  // Primary model
-  const primarySelect = document.getElementById('primary-model') as HTMLSelectElement;
-  const primaryApiKey = document.getElementById('primary-api-key') as HTMLInputElement;
-  const primaryInfo = document.getElementById('primary-model-info');
+  // Helper function to populate a model slot
+  function populateSlot(slot: 'primary' | 'fallback' | 'image', model: ModelConfig | null) {
+    const providerSelect = document.getElementById(`${slot}-provider`) as HTMLSelectElement;
+    const modelSelect = document.getElementById(`${slot}-model`) as HTMLSelectElement;
+    const apiKeyInput = document.getElementById(`${slot}-api-key`) as HTMLInputElement;
+    const baseUrlInput = document.getElementById(`${slot}-base-url`) as HTMLInputElement;
+    const infoEl = document.getElementById(`${slot}-model-info`);
 
-  if (primarySelect && config.settings.model) {
-    primarySelect.value = config.settings.model.id;
+    if (!providerSelect || !modelSelect) return;
+
+    if (model && model.id) {
+      // Set provider first, which will populate models and set default base URL
+      providerSelect.value = model.provider;
+      onProviderChange(slot);
+
+      // Then set model, API key, and base URL
+      modelSelect.value = model.id;
+      if (apiKeyInput) {
+        apiKeyInput.value = model.apiKey || '';
+      }
+      if (baseUrlInput && model.baseUrl) {
+        baseUrlInput.value = model.baseUrl;
+      }
+      if (infoEl) {
+        infoEl.textContent = `${model.provider} • ${model.id}`;
+      }
+    } else {
+      if (apiKeyInput) apiKeyInput.value = '';
+      if (baseUrlInput) baseUrlInput.value = '';
+      if (infoEl) infoEl.textContent = '';
+    }
   }
-  if (primaryApiKey && config.settings.model) {
-    primaryApiKey.value = config.settings.model.apiKey || '';
-  }
-  if (primaryInfo && config.settings.model) {
-    primaryInfo.textContent = `Provider: ${config.settings.model.provider}`;
-  }
+
+  // Primary model
+  populateSlot('primary', config.settings.model);
 
   // Fallback model
-  const fallbackSelect = document.getElementById('fallback-model') as HTMLSelectElement;
-  const fallbackApiKey = document.getElementById('fallback-api-key') as HTMLInputElement;
-  const fallbackInfo = document.getElementById('fallback-model-info');
-
-  if (fallbackSelect && config.settings.fallbackModel) {
-    fallbackSelect.value = config.settings.fallbackModel.id;
-  }
-  if (fallbackApiKey && config.settings.fallbackModel) {
-    fallbackApiKey.value = config.settings.fallbackModel.apiKey || '';
-  }
-  if (fallbackInfo && config.settings.fallbackModel) {
-    fallbackInfo.textContent = `Provider: ${config.settings.fallbackModel.provider}`;
-  }
+  populateSlot('fallback', config.settings.fallbackModel);
 
   // Image model
-  const imageSelect = document.getElementById('image-model') as HTMLSelectElement;
-  const imageApiKey = document.getElementById('image-api-key') as HTMLInputElement;
-  const imageInfo = document.getElementById('image-model-info');
-
-  if (imageSelect && config.settings.imageModel) {
-    imageSelect.value = config.settings.imageModel.id;
-  }
-  if (imageApiKey && config.settings.imageModel) {
-    imageApiKey.value = config.settings.imageModel.apiKey || '';
-  }
-  if (imageInfo && config.settings.imageModel) {
-    imageInfo.textContent = `Provider: ${config.settings.imageModel.provider}`;
-  }
+  populateSlot('image', config.settings.imageModel);
 }
 
 function populateSavedModelsList() {
