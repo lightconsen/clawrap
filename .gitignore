@@ -32,3 +32,6 @@ pnpm-workspace.yaml
 
 # OS
 Thumbs.db
+
+# Git hooks (tracked in .git-hooks/, not .git/hooks/)
+.git/hooks/
