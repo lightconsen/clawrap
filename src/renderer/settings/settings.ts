@@ -111,8 +111,7 @@ function populateNewModelModal() {
 function onNewModelProviderChange() {
   const providerSelect = document.getElementById('new-model-provider') as HTMLSelectElement;
   const modelSelect = document.getElementById('new-model-model') as HTMLSelectElement;
-  const customFieldsDiv = document.getElementById('new-model-custom-fields');
-  const customNameField = document.getElementById('new-model-custom-name-field');
+  const customIdField = document.getElementById('new-model-custom-id-field');
   const baseUrlInput = document.getElementById('new-base-url') as HTMLInputElement;
   const authMethodContainer = document.getElementById('new-model-auth-method');
 
@@ -121,14 +120,12 @@ function onNewModelProviderChange() {
   const providerId = providerSelect.value;
   const provider = PROVIDER_PRESETS.find(p => p.id === providerId);
 
-  // Show/hide custom fields for custom provider
+  // Show/hide custom ID field for custom provider
   if (providerId === 'custom') {
-    if (customFieldsDiv) customFieldsDiv.style.display = 'block';
-    if (customNameField) customNameField.style.display = 'block';
+    if (customIdField) customIdField.style.display = 'block';
     if (modelSelect) modelSelect.style.display = 'none';
   } else {
-    if (customFieldsDiv) customFieldsDiv.style.display = 'none';
-    if (customNameField) customNameField.style.display = 'none';
+    if (customIdField) customIdField.style.display = 'none';
     if (modelSelect) modelSelect.style.display = 'block';
   }
 
@@ -354,16 +351,12 @@ function setupEventListeners() {
     const modelSelect = document.getElementById('new-model-model') as HTMLSelectElement;
     if (modelSelect) modelSelect.value = '';
     const customIdInput = document.getElementById('new-model-id') as HTMLInputElement;
-    const customNameInput = document.getElementById('new-model-name') as HTMLInputElement;
     if (customIdInput) customIdInput.value = '';
-    if (customNameInput) customNameInput.value = '';
     (document.getElementById('new-base-url') as HTMLInputElement).value = '';
     (document.getElementById('new-api-key') as HTMLInputElement).value = '';
     // Reset visibility
-    const customFieldsDiv = document.getElementById('new-model-custom-fields');
-    const customNameField = document.getElementById('new-model-custom-name-field');
-    if (customFieldsDiv) customFieldsDiv.style.display = 'none';
-    if (customNameField) customNameField.style.display = 'none';
+    const customIdField = document.getElementById('new-model-custom-id-field');
+    if (customIdField) customIdField.style.display = 'none';
     if (modelSelect) modelSelect.style.display = 'block';
     // Reset auth method
     const authMethodContainer = document.getElementById('new-model-auth-method');
@@ -454,17 +447,16 @@ async function confirmAddModel() {
   const provider = (document.getElementById('new-model-provider') as HTMLSelectElement).value;
   const modelSelect = document.getElementById('new-model-model') as HTMLSelectElement;
   const customIdInput = document.getElementById('new-model-id') as HTMLInputElement;
-  const customNameInput = document.getElementById('new-model-name') as HTMLInputElement;
   const baseUrl = (document.getElementById('new-base-url') as HTMLInputElement).value.trim();
   const apiKey = (document.getElementById('new-api-key') as HTMLInputElement).value.trim();
 
-  // Get model ID and name from select or custom inputs
+  // Get model ID and name from select or custom input
   let modelId: string;
   let modelName: string;
 
   if (provider === 'custom') {
     modelId = customIdInput.value.trim();
-    modelName = customNameInput.value.trim();
+    modelName = modelId; // Use ID as name for custom models
   } else {
     modelId = modelSelect?.value || '';
     const providerPreset = PROVIDER_PRESETS.find(p => p.id === provider);
@@ -473,7 +465,7 @@ async function confirmAddModel() {
   }
 
   if (!provider || !modelId || !modelName) {
-    alert('Please fill in provider, model, and model name');
+    alert('Please fill in provider and model');
     return;
   }
 
@@ -496,15 +488,12 @@ async function confirmAddModel() {
     (document.getElementById('new-model-provider') as HTMLSelectElement).value = '';
     if (modelSelect) modelSelect.value = '';
     if (customIdInput) customIdInput.value = '';
-    if (customNameInput) customNameInput.value = '';
     (document.getElementById('new-base-url') as HTMLInputElement).value = '';
     (document.getElementById('new-api-key') as HTMLInputElement).value = '';
 
-    // Reset custom fields visibility
-    const customFieldsDiv = document.getElementById('new-model-custom-fields');
-    const customNameField = document.getElementById('new-model-custom-name-field');
-    if (customFieldsDiv) customFieldsDiv.style.display = 'none';
-    if (customNameField) customNameField.style.display = 'none';
+    // Reset custom field visibility
+    const customIdField = document.getElementById('new-model-custom-id-field');
+    if (customIdField) customIdField.style.display = 'none';
     if (modelSelect) modelSelect.style.display = 'block';
 
     // Reload and repopulate
@@ -525,9 +514,7 @@ async function editModel(modelId: string) {
   const providerSelect = document.getElementById('new-model-provider') as HTMLSelectElement;
   const modelSelect = document.getElementById('new-model-model') as HTMLSelectElement;
   const customIdInput = document.getElementById('new-model-id') as HTMLInputElement;
-  const customNameInput = document.getElementById('new-model-name') as HTMLInputElement;
-  const customFieldsDiv = document.getElementById('new-model-custom-fields');
-  const customNameField = document.getElementById('new-model-custom-name-field');
+  const customIdField = document.getElementById('new-model-custom-id-field');
 
   // Set provider - this will populate models
   providerSelect.value = model.provider;
@@ -535,14 +522,11 @@ async function editModel(modelId: string) {
 
   // Set model and other fields
   if (model.provider === 'custom') {
-    if (customFieldsDiv) customFieldsDiv.style.display = 'block';
-    if (customNameField) customNameField.style.display = 'block';
+    if (customIdField) customIdField.style.display = 'block';
     if (modelSelect) modelSelect.style.display = 'none';
     if (customIdInput) customIdInput.value = model.id;
-    if (customNameInput) customNameInput.value = model.name;
   } else {
-    if (customFieldsDiv) customFieldsDiv.style.display = 'none';
-    if (customNameField) customNameField.style.display = 'none';
+    if (customIdField) customIdField.style.display = 'none';
     if (modelSelect) modelSelect.style.display = 'block';
     if (modelSelect) modelSelect.value = model.id;
   }
@@ -565,7 +549,6 @@ async function confirmUpdateModel(modelId: string) {
   const provider = (document.getElementById('new-model-provider') as HTMLSelectElement).value;
   const modelSelect = document.getElementById('new-model-model') as HTMLSelectElement;
   const customIdInput = document.getElementById('new-model-id') as HTMLInputElement;
-  const customNameInput = document.getElementById('new-model-name') as HTMLInputElement;
   const baseUrl = (document.getElementById('new-base-url') as HTMLInputElement).value.trim();
   const apiKey = (document.getElementById('new-api-key') as HTMLInputElement).value.trim();
 
@@ -574,7 +557,7 @@ async function confirmUpdateModel(modelId: string) {
 
   if (provider === 'custom') {
     id = customIdInput?.value.trim() || '';
-    name = customNameInput?.value.trim() || '';
+    name = id; // Use ID as name for custom models
   } else {
     id = modelSelect?.value || '';
     const providerPreset = PROVIDER_PRESETS.find(p => p.id === provider);
@@ -583,7 +566,7 @@ async function confirmUpdateModel(modelId: string) {
   }
 
   if (!provider || !id || !name) {
-    alert('Please fill in provider, model, and model name');
+    alert('Please fill in provider and model');
     return;
   }
 
@@ -612,15 +595,12 @@ async function confirmUpdateModel(modelId: string) {
     (document.getElementById('new-model-provider') as HTMLSelectElement).value = '';
     if (modelSelect) modelSelect.value = '';
     if (customIdInput) customIdInput.value = '';
-    if (customNameInput) customNameInput.value = '';
     (document.getElementById('new-base-url') as HTMLInputElement).value = '';
     (document.getElementById('new-api-key') as HTMLInputElement).value = '';
 
-    // Reset custom fields visibility
-    const customFieldsDiv = document.getElementById('new-model-custom-fields');
-    const customNameField = document.getElementById('new-model-custom-name-field');
-    if (customFieldsDiv) customFieldsDiv.style.display = 'none';
-    if (customNameField) customNameField.style.display = 'none';
+    // Reset custom field visibility
+    const customIdField = document.getElementById('new-model-custom-id-field');
+    if (customIdField) customIdField.style.display = 'none';
     if (modelSelect) modelSelect.style.display = 'block';
 
     // Reload and repopulate
