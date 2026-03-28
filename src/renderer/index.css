@@ -768,13 +768,10 @@ body {
   margin-bottom: 20px;
 }
 
-.model-slot-card {
-  background: var(--bg-card);
+.model-slot {
+  padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+  border-radius: 6px;
 }
 
 .model-slot-header {
@@ -791,20 +788,31 @@ body {
   color: var(--text-secondary);
 }
 
+.section-subheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-subheader h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .models-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .model-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
+  padding: 12px;
   border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .model-item-info {
@@ -836,20 +844,19 @@ body {
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .skill-card {
-  background: var(--bg-card);
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 6px;
   transition: all 0.2s;
 }
 
 .skill-card.enabled {
   border-color: var(--success);
-  background: rgba(166, 227, 161, 0.1);
+  background: rgba(166, 227, 161, 0.05);
 }
 
 .skill-toggle {
@@ -869,14 +876,10 @@ body {
   font-weight: 500;
 }
 
-.status-info {
-  margin-bottom: 20px;
-}
-
 .status-item {
   display: flex;
   gap: 16px;
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -895,7 +898,7 @@ body {
 }
 
 .about-info p {
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 

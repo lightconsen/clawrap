@@ -119,104 +119,107 @@ export function SettingsView() {
         <p className="subtitle">{TEXTS.settings.modelConfigSubtitle}</p>
       </div>
 
-      <div className="models-grid">
-        {(['primary', 'fallback', 'image'] as const).map((slot) => {
-          const model = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
-          const provider = PROVIDER_PRESETS.find(p => p.id === model?.provider);
-
-          return (
-            <div key={slot} className="model-slot-card">
-              <div className="model-slot-header">
-                <span>{slot === 'primary' ? TEXTS.settings.primaryModel : slot === 'fallback' ? TEXTS.settings.fallbackModel : TEXTS.settings.imageModel}</span>
-                <span className={`badge ${slot === 'primary' ? 'badge-primary' : 'badge-secondary'}`}>
-                  {slot === 'primary' ? TEXTS.settings.required : TEXTS.settings.optional}
-                </span>
-              </div>
-
-              <select
-                className="form-select form-select-sm"
-                value={model?.provider || ''}
-                onChange={(e) => handleProviderChange(slot, e.target.value)}
-              >
-                <option value="">{TEXTS.settings.selectProvider}</option>
-                {PROVIDER_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-
-              <select
-                className="form-select form-select-sm"
-                style={{ marginTop: '8px' }}
-                value={model?.id || ''}
-                onChange={(e) => handleModelChange(slot, e.target.value)}
-                disabled={!model?.provider}
-              >
-                <option value="">{TEXTS.settings.selectModel}</option>
-                {provider?.models.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-
-              <div className="input-group input-group-sm" style={{ marginTop: '8px' }}>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder={TEXTS.settings.apiKey}
-                  value={model?.apiKey || ''}
-                  onChange={(e) => handleApiKeyChange(slot, e.target.value)}
-                />
-              </div>
-
-              <input
-                type="text"
-                className="form-input form-input-sm"
-                placeholder={TEXTS.settings.baseUrl}
-                value={model?.baseUrl || ''}
-                onChange={(e) => handleBaseUrlChange(slot, e.target.value)}
-                style={{ marginTop: '8px' }}
-              />
-
-              {model && (
-                <div className="model-info-sm" style={{ marginTop: '8px' }}>
-                  {model.provider} • {model.id}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="card" style={{ marginTop: '20px' }}>
-        <div className="card-header">
+      {/* Model List - shown first */}
+      <div className="model-list-section">
+        <div className="section-subheader">
           <h3>{TEXTS.settings.modelList}</h3>
           <button className="btn btn-sm" onClick={() => { setEditingModel(null); setShowAddModelModal(true); }}>
             {TEXTS.settings.addModel}
           </button>
         </div>
-        <div className="card-content">
-          {savedModels.length === 0 ? (
-            <p className="help-text">{TEXTS.settings.noSavedModels}</p>
-          ) : (
-            <div className="models-list">
-              {savedModels.map(model => (
-                <div key={model.id} className="model-item">
-                  <div className="model-item-info">
-                    <span className="model-item-name">{model.name}</span>
-                    <span className="model-item-id">{model.provider}/{model.id}{model.baseUrl ? ` • ${model.baseUrl}` : ''}</span>
-                    <span className="model-item-id">{model.apiKey ? TEXTS.settings.apiKeyConfigured : TEXTS.settings.noApiKey}</span>
-                  </div>
-                  <div className="model-item-actions">
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleEditModel(model.id)}>
-                      {TEXTS.settings.edit}
-                    </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleRemoveModel(model.id)}>
-                      {TEXTS.settings.remove}
-                    </button>
-                  </div>
+        {savedModels.length === 0 ? (
+          <p className="help-text">{TEXTS.settings.noSavedModels}</p>
+        ) : (
+          <div className="models-list">
+            {savedModels.map(model => (
+              <div key={model.id} className="model-item">
+                <div className="model-item-info">
+                  <span className="model-item-name">{model.name}</span>
+                  <span className="model-item-id">{model.provider}/{model.id}{model.baseUrl ? ` • ${model.baseUrl}` : ''}</span>
+                  <span className="model-item-id">{model.apiKey ? TEXTS.settings.apiKeyConfigured : TEXTS.settings.noApiKey}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="model-item-actions">
+                  <button className="btn btn-sm btn-secondary" onClick={() => handleEditModel(model.id)}>
+                    {TEXTS.settings.edit}
+                  </button>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleRemoveModel(model.id)}>
+                    {TEXTS.settings.remove}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Model Configuration Slots */}
+      <div className="model-slots-section" style={{ marginTop: '32px' }}>
+        <h3 style={{ marginBottom: '16px' }}>Model Slots Configuration</h3>
+        <div className="models-grid">
+          {(['primary', 'fallback', 'image'] as const).map((slot) => {
+            const model = slot === 'primary' ? primaryModel : slot === 'fallback' ? fallbackModel : imageModel;
+            const provider = PROVIDER_PRESETS.find(p => p.id === model?.provider);
+
+            return (
+              <div key={slot} className="model-slot">
+                <div className="model-slot-header">
+                  <span>{slot === 'primary' ? TEXTS.settings.primaryModel : slot === 'fallback' ? TEXTS.settings.fallbackModel : TEXTS.settings.imageModel}</span>
+                  <span className={`badge ${slot === 'primary' ? 'badge-primary' : 'badge-secondary'}`}>
+                    {slot === 'primary' ? TEXTS.settings.required : TEXTS.settings.optional}
+                  </span>
+                </div>
+
+                <select
+                  className="form-select form-select-sm"
+                  value={model?.provider || ''}
+                  onChange={(e) => handleProviderChange(slot, e.target.value)}
+                >
+                  <option value="">{TEXTS.settings.selectProvider}</option>
+                  {PROVIDER_PRESETS.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="form-select form-select-sm"
+                  style={{ marginTop: '8px' }}
+                  value={model?.id || ''}
+                  onChange={(e) => handleModelChange(slot, e.target.value)}
+                  disabled={!model?.provider}
+                >
+                  <option value="">{TEXTS.settings.selectModel}</option>
+                  {provider?.models.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+
+                <div className="input-group input-group-sm" style={{ marginTop: '8px' }}>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder={TEXTS.settings.apiKey}
+                    value={model?.apiKey || ''}
+                    onChange={(e) => handleApiKeyChange(slot, e.target.value)}
+                  />
+                </div>
+
+                <input
+                  type="text"
+                  className="form-input form-input-sm"
+                  placeholder={TEXTS.settings.baseUrl}
+                  value={model?.baseUrl || ''}
+                  onChange={(e) => handleBaseUrlChange(slot, e.target.value)}
+                  style={{ marginTop: '8px' }}
+                />
+
+                {model && (
+                  <div className="model-info-sm" style={{ marginTop: '8px' }}>
+                    {model.provider} • {model.id}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -264,24 +267,20 @@ export function SettingsView() {
         <h2>{TEXTS.settings.gatewaySectionTitle}</h2>
         <p className="subtitle">{TEXTS.settings.gatewayStatusSubtitle}</p>
       </div>
-      <div className="card">
-        <div className="card-content">
-          <div className="status-info">
-            <div className="status-item">
-              <span className="label">{TEXTS.settings.status}:</span>
-              <span className="value" style={{ color: gatewayStatus?.running ? 'var(--success)' : 'var(--error)' }}>
-                {gatewayStatus?.running ? TEXTS.settings.runningStatus : TEXTS.settings.stoppedStatus}
-              </span>
-            </div>
-            <div className="status-item">
-              <span className="label">{TEXTS.settings.portLabel}:</span>
-              <span className="value">{gatewayStatus?.port || '-'}</span>
-            </div>
-          </div>
-          <button className="btn" onClick={restartGateway}>
-            {TEXTS.settings.restartGateway}
-          </button>
+      <div className="gateway-status-info">
+        <div className="status-item">
+          <span className="label">{TEXTS.settings.status}:</span>
+          <span className="value" style={{ color: gatewayStatus?.running ? 'var(--success)' : 'var(--error)' }}>
+            {gatewayStatus?.running ? TEXTS.settings.runningStatus : TEXTS.settings.stoppedStatus}
+          </span>
         </div>
+        <div className="status-item">
+          <span className="label">{TEXTS.settings.portLabel}:</span>
+          <span className="value">{gatewayStatus?.port || '-'}</span>
+        </div>
+        <button className="btn" onClick={restartGateway} style={{ marginTop: '16px' }}>
+          {TEXTS.settings.restartGateway}
+        </button>
       </div>
     </div>
   );
@@ -322,13 +321,9 @@ export function SettingsView() {
                 <h2>{TEXTS.settings.about}</h2>
                 <p className="subtitle">{TEXTS.settings.aboutSubtitle}</p>
               </div>
-              <div className="card">
-                <div className="card-content">
-                  <div className="about-info">
-                    <p><strong>{TEXTS.settings.version}:</strong> 1.0.1</p>
-                    <p><strong>{TEXTS.settings.configDir}:</strong> ~/.openclaw</p>
-                  </div>
-                </div>
+              <div className="about-info">
+                <p><strong>{TEXTS.settings.version}:</strong> 1.0.1</p>
+                <p><strong>{TEXTS.settings.configDir}:</strong> ~/.openclaw</p>
               </div>
             </div>
           )}
