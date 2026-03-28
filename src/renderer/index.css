@@ -285,6 +285,28 @@ body {
   cursor: pointer;
 }
 
+.oauth-status {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.oauth-status .status-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.oauth-status .status-badge.success {
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
 /* Badge */
 .badge {
   padding: 4px 12px;
