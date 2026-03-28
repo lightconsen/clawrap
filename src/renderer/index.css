@@ -361,6 +361,13 @@ body {
   margin-bottom: 40px;
 }
 
+.install-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 20px;
+  border-radius: 24px;
+}
+
 .install-header h1 {
   font-size: 2rem;
   margin-bottom: 8px;

@@ -96,6 +96,7 @@ export function InstallView() {
     <div className="install-view">
       <div className="install-container">
         <div className="install-header">
+          <img src="/icon.png" alt="ClawRap Logo" className="install-logo" />
           <h1>{TEXTS.install.title}</h1>
           <p>{TEXTS.install.subtitle}</p>
         </div>
@@ -145,6 +146,9 @@ export function InstallView() {
           <div className="install-state">
             <div className="success-icon">✓</div>
             <h2>{TEXTS.install.installSuccess}</h2>
+            <button className="btn" onClick={continueToSetup}>
+              {TEXTS.install.continue}
+            </button>
           </div>
         )}
 
