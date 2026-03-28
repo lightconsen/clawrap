@@ -682,10 +682,17 @@ body {
 .settings-header {
   padding: 20px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .settings-header h1 {
   font-size: 1.3rem;
+}
+
+.settings-header .back-btn {
+  padding: 6px 10px;
 }
 
 .settings-nav {
