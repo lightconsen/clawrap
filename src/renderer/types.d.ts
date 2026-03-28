@@ -43,6 +43,10 @@ export interface ElectronAPI {
 
   // App API
   openSettings: () => Promise<void>;
+
+  // OAuth API
+  oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
+  oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
 }
 
 declare global {

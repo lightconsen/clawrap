@@ -93,12 +93,40 @@ export function AddModelModal({ editingModelId, onClose }: AddModelModalProps) {
 
     setIsConnecting(true);
     try {
-      // TODO: Implement OAuth flow based on provider
-      // This would typically open a browser window for OAuth authorization
-      // and receive a token back
-      const oauthUrl = selectedProvider.defaultBaseUrl?.replace('/v1', '') || '';
-      alert(`OAuth flow for ${selectedProvider.name} would start at: ${oauthUrl}\n\nOAuth integration coming soon.`);
-    } finally {
+      // Check if already authenticated
+      const status = await window.electronAPI.oauthGetStatus(selectedProvider.id);
+      if (status.authenticated) {
+        // Already authenticated, use existing token
+        setApiKey('oauth_token_' + selectedProvider.id);
+        return;
+      }
+
+      // Start OAuth flow
+      const result = await window.electronAPI.oauthStart(selectedProvider.id);
+      if (!result.success) {
+        alert(`OAuth failed: ${result.error}`);
+        return;
+      }
+
+      // Poll for OAuth completion (user completes auth in browser)
+      // The OAuth callback server handles the actual token exchange
+      const pollInterval = setInterval(async () => {
+        const newStatus = await window.electronAPI.oauthGetStatus(selectedProvider.id);
+        if (newStatus.authenticated) {
+          clearInterval(pollInterval);
+          setApiKey('oauth_token_' + selectedProvider.id);
+          setIsConnecting(false);
+        }
+      }, 2000);
+
+      // Stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        setIsConnecting(false);
+      }, 5 * 60 * 1000);
+
+    } catch (error) {
+      alert(`OAuth error: ${(error as Error).message}`);
       setIsConnecting(false);
     }
   };

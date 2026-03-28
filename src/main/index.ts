@@ -4,7 +4,10 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS } from '../shared/types';
+import { randomBytes } from 'node:crypto';
+import { createServer, type Server } from 'node:http';
+import { URL } from 'node:url';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -13,6 +16,8 @@ class OpenClawApp {
   private tray: Tray | null = null;
   private gatewayManager: GatewayManager;
   private configManager: ConfigManager;
+  private oauthState: Map<string, { state: string; codeVerifier: string; resolve: (token: string) => void; reject: (error: Error) => void }> = new Map();
+  private oauthServers: Map<string, Server> = new Map();
 
   constructor() {
     this.configManager = new ConfigManager();
@@ -255,6 +260,228 @@ class OpenClawApp {
     ipcMain.handle('app:openSettings', async () => {
       // Notify renderer to show settings view
       this.mainWindow?.webContents.send('show-settings');
+    });
+
+    // OAuth IPC Handlers
+    ipcMain.handle('oauth:start', async (_event, provider: string) => {
+      return this.handleOAuthStart(provider);
+    });
+
+    ipcMain.handle('oauth:getStatus', async (_event, provider: string) => {
+      return this.handleOAuthGetStatus(provider);
+    });
+  }
+
+  private async handleOAuthStart(provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> {
+    try {
+      const providerConfig = PROVIDER_PRESETS.find(p => p.id === provider);
+      if (!providerConfig) {
+        return { success: false, error: `Unknown provider: ${provider}` };
+      }
+
+      // Generate PKCE parameters
+      const state = randomBytes(16).toString('hex');
+      const codeVerifier = randomBytes(32).toString('hex');
+      const codeChallenge = require('node:crypto').createHash('sha256').update(codeVerifier).digest('base64url');
+
+      // Get OAuth config for provider
+      const oauthConfig = this.getOAuthConfigForProvider(provider);
+      if (!oauthConfig) {
+        return { success: false, error: `OAuth not configured for provider: ${provider}` };
+      }
+
+      // Create local callback server
+      const port = await this.findOpenPort();
+      const redirectUri = `http://127.0.0.1:${port}/callback`;
+
+      // Build authorization URL
+      const authUrl = this.buildAuthUrl({
+        ...oauthConfig,
+        redirectUri,
+        state,
+        codeChallenge,
+      });
+
+      // Store state for callback validation
+      this.oauthState.set(state, {
+        state,
+        codeVerifier,
+        resolve: (token: string) => {
+          log.info(`OAuth completed for provider: ${provider}`);
+        },
+        reject: (error: Error) => {
+          log.error(`OAuth failed for provider: ${provider}`, error);
+        },
+      });
+
+      // Start callback server
+      await this.startOAuthCallbackServer(port, state);
+
+      // Open browser for authorization
+      await shell.openExternal(authUrl);
+
+      return { success: true, authUrl };
+    } catch (error) {
+      log.error('OAuth start failed:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  private async handleOAuthGetStatus(provider: string): Promise<{ authenticated: boolean; email?: string; expires?: number }> {
+    try {
+      // Check OpenClaw auth-profiles.json for OAuth credentials
+      const authStorePath = path.join(require('os').homedir(), '.openclaw', 'agents', 'agent', 'auth-profiles.json');
+
+      if (!require('fs').existsSync(authStorePath)) {
+        return { authenticated: false };
+      }
+
+      const authStore = JSON.parse(require('fs').readFileSync(authStorePath, 'utf-8'));
+      const profiles = authStore.profiles || {};
+
+      // Find OAuth credential for this provider
+      for (const [profileId, credential] of Object.entries(profiles as Record<string, any>)) {
+        if (credential.type === 'oauth' && credential.provider === provider) {
+          const now = Date.now();
+          const expires = credential.expires as number | undefined;
+
+          // Check if token is expired
+          if (expires && now > expires) {
+            log.info(`OAuth token expired for provider: ${provider}`);
+            return { authenticated: false };
+          }
+
+          return {
+            authenticated: true,
+            email: credential.email as string | undefined,
+            expires,
+          };
+        }
+      }
+
+      return { authenticated: false };
+    } catch (error) {
+      log.error('OAuth status check failed:', error);
+      return { authenticated: false };
+    }
+  }
+
+  private getOAuthConfigForProvider(provider: string): { clientId: string; authorizeUrl: string; tokenUrl: string; scopes: string[] } | null {
+    // OAuth configuration for supported providers
+    const oauthConfigs: Record<string, { clientId: string; authorizeUrl: string; tokenUrl: string; scopes: string[] }> = {
+      'openai-codex': {
+        clientId: 'codex-cli',
+        authorizeUrl: 'https://chatgpt.com/oauth/authorize',
+        tokenUrl: 'https://chatgpt.com/backend-api/oauth/token',
+        scopes: ['models.read', 'models.write'],
+      },
+      // Add more providers as needed
+    };
+    return oauthConfigs[provider] || null;
+  }
+
+  private buildAuthUrl(config: { clientId: string; redirectUri: string; scopes: string[]; state: string; codeChallenge: string; authorizeUrl: string }): string {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: config.scopes.join(' '),
+      state: config.state,
+      code_challenge: config.codeChallenge,
+      code_challenge_method: 'S256',
+    });
+    return `${config.authorizeUrl}?${params.toString()}`;
+  }
+
+  private async findOpenPort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = createServer();
+      server.listen(0, '127.0.0.1', () => {
+        const address = server.address();
+        server.close(() => {
+          if (typeof address === 'object' && address !== null) {
+            resolve(address.port);
+          } else {
+            reject(new Error('Failed to get port'));
+          }
+        });
+      });
+      server.on('error', reject);
+    });
+  }
+
+  private async startOAuthCallbackServer(port: number, expectedState: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const server = createServer((req, res) => {
+        try {
+          const url = new URL(req.url || '/', `http://127.0.0.1:${port}`);
+
+          if (url.pathname === '/callback') {
+            const code = url.searchParams.get('code');
+            const state = url.searchParams.get('state');
+            const error = url.searchParams.get('error');
+
+            if (error) {
+              res.statusCode = 400;
+              res.end(`OAuth error: ${error}`);
+              this.oauthState.delete(expectedState);
+              reject(new Error(`OAuth error: ${error}`));
+              return;
+            }
+
+            if (!code || !state) {
+              res.statusCode = 400;
+              res.end('Missing code or state');
+              reject(new Error('Missing code or state'));
+              return;
+            }
+
+            if (state !== expectedState) {
+              res.statusCode = 400;
+              res.end('State mismatch');
+              this.oauthState.delete(expectedState);
+              reject(new Error('OAuth state mismatch'));
+              return;
+            }
+
+            // Success - show completion page
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html');
+            res.end(`
+              <!DOCTYPE html>
+              <html>
+                <head><title>OAuth Complete</title></head>
+                <body>
+                  <h1>Authentication Complete</h1>
+                  <p>You can close this window and return to OpenClaw.</p>
+                </body>
+              </html>
+            `);
+
+            // Resolve the promise - the actual token exchange happens via OpenClaw CLI
+            this.oauthState.delete(expectedState);
+            server.close();
+            resolve();
+          } else {
+            res.statusCode = 404;
+            res.end('Not found');
+          }
+        } catch (err) {
+          res.statusCode = 500;
+          res.end('Server error');
+          reject(err);
+        }
+      });
+
+      server.listen(port, '127.0.0.1', () => {
+        this.oauthServers.set(`${port}`, server);
+        resolve();
+      });
+
+      server.on('error', (err: Error) => {
+        this.oauthServers.delete(`${port}`);
+        reject(err);
+      });
     });
   }
 

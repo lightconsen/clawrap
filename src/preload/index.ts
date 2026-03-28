@@ -58,7 +58,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string): Promise<void> => debugInvoke('shell:openExternal', url),
 
   // App API
-  openSettings: (): Promise<void> => debugInvoke('app:openSettings')
+  openSettings: (): Promise<void> => debugInvoke('app:openSettings'),
+
+  // OAuth API
+  oauthStart: (provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> =>
+    debugInvoke('oauth:start', provider),
+  oauthGetStatus: (provider: string): Promise<{ authenticated: boolean; email?: string; expires?: number }> =>
+    debugInvoke('oauth:getStatus', provider)
 });
 
 // Type declarations for TypeScript
@@ -95,6 +101,9 @@ declare global {
       // Skills Hub API
       fetchSkills: () => Promise<{ success: boolean; data: any[]; error?: string }>;
       installSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+      // OAuth API
+      oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
+      oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
     };
   }
 }
