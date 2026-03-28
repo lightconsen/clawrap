@@ -13,7 +13,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Config API
   getConfig: (): Promise<OpenClawConfig> => debugInvoke('config:get'),
   setModel: (model: ModelConfig): Promise<boolean> => debugInvoke('config:setModel', model),
+  setFallbackModel: (model: ModelConfig | null): Promise<boolean> => debugInvoke('config:setFallbackModel', model),
+  setImageModel: (model: ModelConfig | null): Promise<boolean> => debugInvoke('config:setImageModel', model),
   setApiKey: (apiKey: string): Promise<boolean> => debugInvoke('config:setApiKey', apiKey),
+  setModelApiKey: (modelId: string, apiKey: string): Promise<boolean> => debugInvoke('config:setModelApiKey', { modelId, apiKey }),
   getSkills: (): Promise<string[]> => debugInvoke('config:getSkills'),
   setSkills: (skills: string[]): Promise<boolean> => debugInvoke('config:setSkills', skills),
   getTools: (): Promise<string[]> => debugInvoke('config:getTools'),
@@ -62,7 +65,10 @@ declare global {
     electronAPI: {
       getConfig: () => Promise<OpenClawConfig>;
       setModel: (model: ModelConfig) => Promise<boolean>;
+      setFallbackModel: (model: ModelConfig | null) => Promise<boolean>;
+      setImageModel: (model: ModelConfig | null) => Promise<boolean>;
       setApiKey: (apiKey: string) => Promise<boolean>;
+      setModelApiKey: (modelId: string, apiKey: string) => Promise<boolean>;
       getSkills: () => Promise<string[]>;
       setSkills: (skills: string[]) => Promise<boolean>;
       getTools: () => Promise<string[]>;

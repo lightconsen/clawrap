@@ -95,8 +95,23 @@ class OpenClawApp {
       return true;
     });
 
+    ipcMain.handle('config:setFallbackModel', async (_event, model: ModelConfig | null) => {
+      await this.configManager.setFallbackModel(model);
+      return true;
+    });
+
+    ipcMain.handle('config:setImageModel', async (_event, model: ModelConfig | null) => {
+      await this.configManager.setImageModel(model);
+      return true;
+    });
+
     ipcMain.handle('config:setApiKey', async (_event, apiKey: string) => {
       await this.configManager.setApiKey(apiKey);
+      return true;
+    });
+
+    ipcMain.handle('config:setModelApiKey', async (_event, { modelId, apiKey }: { modelId: string; apiKey: string }) => {
+      await this.configManager.setModelApiKey(modelId, apiKey);
       return true;
     });
 
@@ -290,6 +305,11 @@ class OpenClawApp {
       shell.openExternal(url);
     });
 
+    // Settings window
+    ipcMain.handle('app:openSettings', async () => {
+      await this.createSettingsWindow();
+    });
+
     // Settings API - get all data needed for settings page
     ipcMain.handle('settings:get', async () => {
       const appDataPath = process.env.HOME || process.env.USERPROFILE || '';
@@ -335,6 +355,38 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to create setup window:', error);
       throw error;
+    }
+  }
+
+  private async createSettingsWindow(): Promise<void> {
+    log.info('Creating settings window...');
+    try {
+      const settingsWindow = new BrowserWindow({
+        width: 1000,
+        height: 700,
+        resizable: true,
+        maximizable: true,
+        minimizable: true,
+        webPreferences: {
+          preload: path.join(__dirname, '../preload/index.js'),
+          contextIsolation: true,
+          nodeIntegration: false
+        },
+        title: 'OpenClaw Settings',
+        icon: this.getIconPath(),
+        parent: this.mainWindow || undefined
+      });
+
+      const settingsHtmlPath = path.join(__dirname, '../renderer/settings/index.html');
+      log.info(`Loading settings HTML from: ${settingsHtmlPath}`);
+      await settingsWindow.loadFile(settingsHtmlPath);
+      log.info('Settings window loaded successfully');
+
+      settingsWindow.on('closed', () => {
+        // Window closed, no cleanup needed
+      });
+    } catch (error) {
+      log.error('Failed to create settings window:', error);
     }
   }
 
@@ -556,10 +608,10 @@ class OpenClawApp {
           },
           { type: 'separator' },
           {
-            label: 'Preferences...',
+            label: 'Settings...',
             accelerator: 'CmdOrCtrl+,',
-            click: () => {
-              // Show preferences window
+            click: async () => {
+              await this.createSettingsWindow();
             }
           },
           { type: 'separator' },

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+  <title>Settings - OpenClaw</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>Settings</h1>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="models">Models</a>
+        <a href="#" class="nav-item" data-section="skills">Skills</a>
+        <a href="#" class="nav-item" data-section="tools">Tools</a>
+        <a href="#" class="nav-item" data-section="gateway">Gateway</a>
+        <a href="#" class="nav-item" data-section="about">About</a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Models Section -->
+      <div id="section-models" class="section active">
+        <div class="section-header">
+          <h2>Model Configuration</h2>
+          <p class="subtitle">Configure your primary, fallback, and image models</p>
+        </div>
+
+        <!-- Model Slots Grid -->
+        <div class="models-grid-container">
+          <!-- Primary Model -->
+          <div class="model-slot-card">
+            <div class="model-slot-header">
+              <span>Primary Model</span>
+              <span class="badge badge-primary">Required</span>
+            </div>
+            <select id="primary-model" class="form-select form-select-sm">
+              <option value="">Select a model...</option>
+            </select>
+            <div class="input-group input-group-sm" style="margin-top: 8px;">
+              <input type="password" id="primary-api-key" class="form-input" placeholder="API Key">
+              <button class="btn-icon btn-icon-sm" id="toggle-primary-key" title="Show/Hide">👁</button>
+            </div>
+            <div class="model-info-sm" id="primary-model-info"></div>
+          </div>
+
+          <!-- Fallback Model -->
+          <div class="model-slot-card">
+            <div class="model-slot-header">
+              <span>Fallback Model</span>
+              <span class="badge badge-secondary">Optional</span>
+            </div>
+            <select id="fallback-model" class="form-select form-select-sm">
+              <option value="">None</option>
+            </select>
+            <div class="input-group input-group-sm" style="margin-top: 8px;">
+              <input type="password" id="fallback-api-key" class="form-input" placeholder="API Key">
+              <button class="btn-icon btn-icon-sm" id="toggle-fallback-key" title="Show/Hide">👁</button>
+            </div>
+            <div class="model-info-sm" id="fallback-model-info"></div>
+          </div>
+
+          <!-- Image Model -->
+          <div class="model-slot-card">
+            <div class="model-slot-header">
+              <span>Image Model</span>
+              <span class="badge badge-secondary">Optional</span>
+            </div>
+            <select id="image-model" class="form-select form-select-sm">
+              <option value="">None</option>
+            </select>
+            <div class="input-group input-group-sm" style="margin-top: 8px;">
+              <input type="password" id="image-api-key" class="form-input" placeholder="API Key">
+              <button class="btn-icon btn-icon-sm" id="toggle-image-key" title="Show/Hide">👁</button>
+            </div>
+            <div class="model-info-sm" id="image-model-info"></div>
+          </div>
+        </div>
+
+        <!-- Saved Models List -->
+        <div class="config-card" style="margin-top: 20px;">
+          <div class="card-header">
+            <h3>Model List</h3>
+            <button class="btn btn-sm" id="btn-add-model">+ Add Model</button>
+          </div>
+          <div class="card-content">
+            <div id="saved-models-list" class="models-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills Section -->
+      <div id="section-skills" class="section">
+        <div class="section-header">
+          <h2>Skills</h2>
+          <p class="subtitle">Manage enabled skills for your agent</p>
+        </div>
+        <div class="config-card">
+          <div class="card-content">
+            <div id="skills-list" class="skills-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tools Section -->
+      <div id="section-tools" class="section">
+        <div class="section-header">
+          <h2>Tools</h2>
+          <p class="subtitle">Manage enabled tools for your agent</p>
+        </div>
+        <div class="config-card">
+          <div class="card-content">
+            <div id="tools-list" class="tools-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gateway Section -->
+      <div id="section-gateway" class="section">
+        <div class="section-header">
+          <h2>Gateway Status</h2>
+          <p class="subtitle">View and manage the OpenClaw gateway</p>
+        </div>
+        <div class="config-card">
+          <div class="card-content">
+            <div class="status-info">
+              <div class="status-item">
+                <span class="label">Status:</span>
+                <span id="gateway-status" class="value">-</span>
+              </div>
+              <div class="status-item">
+                <span class="label">Port:</span>
+                <span id="gateway-port" class="value">-</span>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-restart-gateway">Restart Gateway</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- About Section -->
+      <div id="section-about" class="section">
+        <div class="section-header">
+          <h2>About</h2>
+          <p class="subtitle">OpenClaw Desktop Application</p>
+        </div>
+        <div class="config-card">
+          <div class="card-content">
+            <div class="about-info">
+              <p><strong>Version:</strong> <span id="app-version">1.0.0</span></p>
+              <p><strong>Config Directory:</strong> <span id="config-dir">-</span></p>
+              <p><strong>OpenClaw:</strong> <span id="openclaw-version">-</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Model Modal -->
+  <div id="add-model-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add New Model</h3>
+        <button class="btn-close" id="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-model-provider">Provider</label>
+          <select id="new-model-provider" class="form-select">
+            <option value="">Select a provider...</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="google">Google</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="alibaba">Alibaba (DashScope)</option>
+            <option value="tencent">Tencent (Hunyuan)</option>
+            <option value="baidu">Baidu (Qianfan)</option>
+            <option value="bytedance">ByteDance (Doubao)</option>
+            <option value="xai">xAI (Grok)</option>
+            <option value="mistral">Mistral AI</option>
+            <option value="moonshot">Moonshot (Kimi)</option>
+            <option value="minimax">MiniMax</option>
+            <option value="ollama">Ollama (Local)</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="new-model-id">Model ID</label>
+          <input type="text" id="new-model-id" class="form-input" placeholder="e.g., claude-sonnet-4-6">
+        </div>
+        <div class="form-group">
+          <label for="new-model-name">Model Name</label>
+          <input type="text" id="new-model-name" class="form-input" placeholder="e.g., Claude Sonnet 4.6">
+        </div>
+        <div class="form-group">
+          <label for="new-base-url">Base URL (optional)</label>
+          <input type="text" id="new-base-url" class="form-input" placeholder="https://api.example.com/v1">
+        </div>
+        <div class="form-group">
+          <label for="new-api-key">API Key</label>
+          <input type="password" id="new-api-key" class="form-input" placeholder="Enter API key">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-add-model">Cancel</button>
+        <button class="btn btn-primary" id="confirm-add-model">Add Model</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

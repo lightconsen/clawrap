@@ -31,8 +31,10 @@ export interface OpenClawConfig {
     skills: SkillConfig;
     tools: ToolConfig;
     bypass_channels: BypassChannel[];
-    model: ModelConfig | null;
-    savedModels: ModelConfig[];
+    model: ModelConfig | null;          // Primary model
+    fallbackModel: ModelConfig | null;   // Fallback model
+    imageModel: ModelConfig | null;      // Image-capable model
+    savedModels: ModelConfig[];          // List of all saved models
   };
 }
 
