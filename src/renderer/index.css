@@ -616,7 +616,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 10px 16px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
 }
@@ -624,18 +624,19 @@ body {
 .terminal-title {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .terminal-title h1 {
-  font-size: 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .gateway-status {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
