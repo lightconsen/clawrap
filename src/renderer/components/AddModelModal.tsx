@@ -185,68 +185,40 @@ export function AddModelModal({ editingModelId, onClose }: AddModelModalProps) {
           )}
 
           {authMethod === 'api_key' ? (
-            <>
-              <div className="form-group">
-                <label>{TEXTS.settings.apiKeyLabel}</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={TEXTS.settings.apiKeyPlaceholder}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>{TEXTS.settings.baseUrlLabel}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder={TEXTS.settings.baseUrlPlaceholder}
-                />
-              </div>
-            </>
+            <div className="form-group">
+              <label>{TEXTS.settings.apiKeyLabel}</label>
+              <input
+                type="password"
+                className="form-input"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={TEXTS.settings.apiKeyPlaceholder}
+              />
+            </div>
           ) : (
-            <>
-              <div className="form-group">
-                <label>OAuth Authorization</label>
-                {apiKey ? (
-                  <div className="oauth-status">
-                    <span className="status-badge success">✓ Connected</span>
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => setApiKey('')}
-                      style={{ marginLeft: '12px' }}
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
+            <div className="form-group">
+              <label>OAuth Authorization</label>
+              {apiKey ? (
+                <div className="oauth-status">
+                  <span className="status-badge success">✓ Connected</span>
                   <button
-                    className="btn"
-                    onClick={handleOAuthConnect}
-                    disabled={isConnecting || !selectedProvider}
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setApiKey('')}
+                    style={{ marginLeft: '12px' }}
                   >
-                    {isConnecting ? 'Connecting...' : `Connect with ${selectedProvider?.name || 'Provider'}`}
+                    Disconnect
                   </button>
-                )}
-              </div>
-
-              {baseUrl && (
-                <div className="form-group">
-                  <label>{TEXTS.settings.baseUrlLabel} (Read-only)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={baseUrl}
-                    disabled
-                    placeholder={TEXTS.settings.baseUrlPlaceholder}
-                  />
                 </div>
+              ) : (
+                <button
+                  className="btn"
+                  onClick={handleOAuthConnect}
+                  disabled={isConnecting || !selectedProvider}
+                >
+                  {isConnecting ? 'Connecting...' : `Connect with ${selectedProvider?.name || 'Provider'}`}
+                </button>
               )}
-            </>
+            </div>
           )}
         </div>
 
