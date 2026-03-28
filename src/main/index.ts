@@ -509,10 +509,8 @@ class OpenClawApp {
   }
 
   private handleWindowAllClosed(): void {
-    // On macOS, don't quit when windows close - user can reactivate from dock
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    // Always quit the app when window closes, gateway continues running in background
+    app.quit();
   }
 
   private async handleActivate(): Promise<void> {
