@@ -46,6 +46,21 @@ export class ConfigManager {
     }
 
     this.config.settings.model = model;
+
+    // Also add to saved models if not already present
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+    if (existingIndex === -1) {
+      // Model not in saved list, add it
+      this.config.settings.savedModels.push(model);
+    } else {
+      // Model exists, update it
+      this.config.settings.savedModels[existingIndex] = model;
+    }
+
     await this.saveConfig();
     log.info(`Model updated to: ${model.name}`);
 
@@ -67,6 +82,195 @@ export class ConfigManager {
 
       // Also update OpenClaw's native config
       await this.updateOpenClawConfig(this.config.settings.model, apiKey);
+    }
+  }
+
+  async setFallbackModel(model: ModelConfig | null): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    this.config.settings.fallbackModel = model;
+
+    // Add to saved models if not already present
+    if (model) {
+      if (!this.config.settings.savedModels) {
+        this.config.settings.savedModels = [];
+      }
+
+      const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+      if (existingIndex === -1) {
+        this.config.settings.savedModels.push(model);
+      } else {
+        this.config.settings.savedModels[existingIndex] = model;
+      }
+    }
+
+    await this.saveConfig();
+    log.info(`Fallback model updated to: ${model?.name || 'none'}`);
+  }
+
+  async setImageModel(model: ModelConfig | null): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    this.config.settings.imageModel = model;
+
+    // Add to saved models if not already present
+    if (model) {
+      if (!this.config.settings.savedModels) {
+        this.config.settings.savedModels = [];
+      }
+
+      const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+      if (existingIndex === -1) {
+        this.config.settings.savedModels.push(model);
+      } else {
+        this.config.settings.savedModels[existingIndex] = model;
+      }
+    }
+
+    await this.saveConfig();
+    log.info(`Image model updated to: ${model?.name || 'none'}`);
+  }
+
+  async setModelApiKey(modelId: string, apiKey: string): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    // Find and update the model in savedModels
+    const modelIndex = this.config.settings.savedModels.findIndex(m => m.id === modelId);
+    if (modelIndex === -1) {
+      throw new Error(`Model with ID '${modelId}' not found`);
+    }
+
+    this.config.settings.savedModels[modelIndex].apiKey = apiKey;
+    await this.saveConfig();
+    log.info(`API key updated for model: ${modelId}`);
+
+    // Also update OpenClaw's native config if this is the primary model
+    if (this.config.settings.model?.id === modelId) {
+      await this.updateOpenClawConfig(this.config.settings.model, apiKey);
+    }
+  }
+
+  async setSkills(skills: string[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.skills) {
+      this.config.settings.skills = { enabled: [] };
+    }
+    this.config.settings.skills.enabled = skills;
+    await this.saveConfig();
+    log.info(`Skills updated: ${skills.length} enabled`);
+  }
+
+  async setTools(tools: string[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.tools) {
+      this.config.settings.tools = { enabled: [] };
+    }
+    this.config.settings.tools.enabled = tools;
+    await this.saveConfig();
+    log.info(`Tools updated: ${tools.length} enabled`);
+  }
+
+  async getChannels(): Promise<{ type: string; enabled: boolean }[]> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    return this.config.settings.bypass_channels || [];
+  }
+
+  async setChannels(channels: { type: string; enabled: boolean }[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    this.config.settings.bypass_channels = channels;
+    await this.saveConfig();
+    log.info(`Channels updated: ${channels.length} configured`);
+  }
+
+  async getSavedModels(): Promise<ModelConfig[]> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    return this.config.settings.savedModels || [];
+  }
+
+  async addModel(model: ModelConfig): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    // Check if model with same ID already exists
+    const exists = this.config.settings.savedModels.some(m => m.id === model.id);
+    if (exists) {
+      throw new Error(`Model with ID '${model.id}' already exists`);
+    }
+
+    this.config.settings.savedModels.push(model);
+    await this.saveConfig();
+    log.info(`Model added: ${model.name}`);
+  }
+
+  async updateModel(model: ModelConfig): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const index = this.config.settings.savedModels.findIndex(m => m.id === model.id);
+    if (index === -1) {
+      throw new Error(`Model with ID '${model.id}' not found`);
+    }
+
+    this.config.settings.savedModels[index] = model;
+    await this.saveConfig();
+    log.info(`Model updated: ${model.name}`);
+
+    // If this is the currently selected model, update it
+    if (this.config.settings.model?.id === model.id) {
+      await this.setModel(model);
+    }
+  }
+
+  async removeModel(modelId: string): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+
+    if (!this.config.settings.savedModels) {
+      this.config.settings.savedModels = [];
+    }
+
+    const model = this.config.settings.savedModels.find(m => m.id === modelId);
+    if (!model) {
+      throw new Error(`Model with ID '${modelId}' not found`);
+    }
+
+    this.config.settings.savedModels = this.config.settings.savedModels.filter(m => m.id !== modelId);
+    await this.saveConfig();
+    log.info(`Model removed: ${model.name}`);
+
+    // If this was the currently selected model, clear the model selection
+    if (this.config.settings.model?.id === modelId) {
+      this.config.settings.model = null;
+      await this.saveConfig();
     }
   }
 
@@ -209,6 +413,44 @@ export class ConfigManager {
       const content = await fs.readFile(this.configPath, 'utf-8');
       this.config = yaml.load(content) as OpenClawConfig;
       log.info('Config loaded successfully');
+
+      // Migrate: ensure savedModels exists
+      if (!this.config.settings.savedModels) {
+        this.config.settings.savedModels = [];
+      }
+
+      // Add primary model to savedModels if not already present
+      const primaryModel = this.config.settings.model;
+      if (primaryModel) {
+        const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === primaryModel.id);
+        if (existingIndex === -1) {
+          this.config.settings.savedModels.push(primaryModel);
+          log.info('Migrated primary model to savedModels');
+        }
+      }
+
+      // Add fallback model to savedModels if not already present
+      const fallbackModel = this.config.settings.fallbackModel;
+      if (fallbackModel) {
+        const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === fallbackModel.id);
+        if (existingIndex === -1) {
+          this.config.settings.savedModels.push(fallbackModel);
+          log.info('Migrated fallback model to savedModels');
+        }
+      }
+
+      // Add image model to savedModels if not already present
+      const imageModel = this.config.settings.imageModel;
+      if (imageModel) {
+        const existingIndex = this.config.settings.savedModels.findIndex(m => m.id === imageModel.id);
+        if (existingIndex === -1) {
+          this.config.settings.savedModels.push(imageModel);
+          log.info('Migrated image model to savedModels');
+        }
+      }
+
+      // Save the migrated config
+      await this.saveConfig();
     } catch (error) {
       log.error('Failed to load config:', error);
       // Create default config if loading fails
@@ -324,7 +566,10 @@ export class ConfigManager {
             enabled: true
           }
         ],
-        model: null
+        model: null,
+        fallbackModel: null,
+        imageModel: null,
+        savedModels: []
       }
     };
   }

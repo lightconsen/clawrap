@@ -22,7 +22,227 @@ export interface ModelConfig {
   provider: string;
   apiKey?: string;
   baseUrl?: string;
+  authMethod?: 'api_key' | 'oauth';  // Authentication method
 }
+
+export interface ProviderPreset {
+  id: string;
+  name: string;
+  authMethods: ('api_key' | 'oauth')[];
+  defaultAuthMethod: 'api_key' | 'oauth';
+  models: { id: string; name: string }[];
+  defaultBaseUrl?: string;
+  description?: string;
+}
+
+export const PROVIDER_PRESETS: ProviderPreset[] = [
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+      { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
+      { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' }
+    ],
+    defaultBaseUrl: 'https://api.anthropic.com'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    authMethods: ['api_key', 'oauth'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+      { id: 'o1', name: 'o1' },
+      { id: 'o1-mini', name: 'o1 Mini' }
+    ],
+    defaultBaseUrl: 'https://api.openai.com/v1'
+  },
+  {
+    id: 'openai-codex',
+    name: 'OpenAI Codex (ChatGPT OAuth)',
+    authMethods: ['oauth'],
+    defaultAuthMethod: 'oauth',
+    models: [
+      { id: 'codex-mini-latest', name: 'Codex Mini Latest' },
+      { id: 'gpt-4o-canmore', name: 'GPT-4o Canmore' }
+    ],
+    defaultBaseUrl: 'https://chatgpt.com/backend-api'
+  },
+  {
+    id: 'google',
+    name: 'Google',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite' }
+    ],
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com'
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek-V3' },
+      { id: 'deepseek-reasoner', name: 'DeepSeek-R1' }
+    ],
+    defaultBaseUrl: 'https://api.deepseek.com/v1'
+  },
+  {
+    id: 'alibaba',
+    name: 'Alibaba (DashScope)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'qwen-max', name: 'Qwen Max' },
+      { id: 'qwen-plus', name: 'Qwen Plus' },
+      { id: 'qwen-turbo', name: 'Qwen Turbo' }
+    ],
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  },
+  {
+    id: 'tencent',
+    name: 'Tencent (Hunyuan)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'hunyuan-standard', name: 'Hunyuan Standard' },
+      { id: 'hunyuan-pro', name: 'Hunyuan Pro' }
+    ]
+  },
+  {
+    id: 'baidu',
+    name: 'Baidu (Qianfan)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'ernie-4.0', name: 'ERNIE 4.0' },
+      { id: 'ernie-3.5', name: 'ERNIE 3.5' }
+    ],
+    defaultBaseUrl: 'https://qianfan.baidubce.com/v2'
+  },
+  {
+    id: 'bytedance',
+    name: 'ByteDance (Doubao)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'doubao-pro', name: 'Doubao Pro' },
+      { id: 'doubao-lite', name: 'Doubao Lite' }
+    ]
+  },
+  {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'grok-2', name: 'Grok 2' },
+      { id: 'grok-3', name: 'Grok 3' }
+    ],
+    defaultBaseUrl: 'https://api.x.ai/v1'
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral AI',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'mistral-large', name: 'Mistral Large' },
+      { id: 'mistral-medium', name: 'Mistral Medium' },
+      { id: 'mistral-small', name: 'Mistral Small' }
+    ],
+    defaultBaseUrl: 'https://api.mistral.ai/v1'
+  },
+  {
+    id: 'moonshot',
+    name: 'Moonshot (Kimi)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'kimi-k2.5', name: 'Kimi K2.5' },
+      { id: 'kimi-k2', name: 'Kimi K2' }
+    ],
+    defaultBaseUrl: 'https://api.moonshot.cn/v1'
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'minimax', name: 'MiniMax' }
+    ],
+    defaultBaseUrl: 'https://api.minimax.chat/v1'
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local)',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'ollama-default', name: 'Local Model' }
+    ],
+    defaultBaseUrl: 'http://localhost:11434/v1'
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'openrouter-default', name: 'OpenRouter Models' }
+    ],
+    defaultBaseUrl: 'https://openrouter.ai/api/v1'
+  },
+  {
+    id: 'together',
+    name: 'Together AI',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'together-default', name: 'Together Models' }
+    ],
+    defaultBaseUrl: 'https://api.together.xyz/v1'
+  },
+  {
+    id: 'vllm',
+    name: 'vLLM',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'vllm-default', name: 'vLLM Models' }
+    ],
+    defaultBaseUrl: 'http://localhost:8000/v1'
+  },
+  {
+    id: 'litellm',
+    name: 'LiteLLM',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [
+      { id: 'litellm-default', name: 'LiteLLM Proxy' }
+    ],
+    defaultBaseUrl: 'http://localhost:4000/v1'
+  },
+  {
+    id: 'custom',
+    name: 'Custom Provider',
+    authMethods: ['api_key'],
+    defaultAuthMethod: 'api_key',
+    models: [],
+    description: 'Configure a custom OpenAI-compatible API endpoint'
+  }
+];
 
 export interface OpenClawConfig {
   version: string;
@@ -31,7 +251,10 @@ export interface OpenClawConfig {
     skills: SkillConfig;
     tools: ToolConfig;
     bypass_channels: BypassChannel[];
-    model: ModelConfig | null;
+    model: ModelConfig | null;          // Primary model
+    fallbackModel: ModelConfig | null;   // Fallback model
+    imageModel: ModelConfig | null;      // Image-capable model
+    savedModels: ModelConfig[];          // List of all saved models
   };
 }
 
@@ -100,4 +323,13 @@ export const PRESET_MODELS: ModelConfig[] = [
   { id: "zai-default", name: "Z.AI", provider: "zai" },
   { id: "synthetic-default", name: "Synthetic", provider: "synthetic" },
   { id: "custom", name: "Custom Model (Other)", provider: "custom" }
+];
+
+export const AVAILABLE_SKILLS = [
+  { id: "everything-claude-code:plan", name: "Plan", description: "Plan mode for architectural planning" },
+  { id: "everything-claude-code:tdd", name: "TDD", description: "Test-driven development mode" },
+  { id: "everything-claude-code:e2e", name: "E2E", description: "End-to-end testing mode" },
+  { id: "everything-claude-code:python-review", name: "Python Review", description: "Python code review" },
+  { id: "everything-claude-code:go-review", name: "Go Review", description: "Go code review" },
+  { id: "everything-claude-code:security-reviewer", name: "Security Reviewer", description: "Security analysis" }
 ];

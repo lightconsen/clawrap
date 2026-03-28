@@ -9,6 +9,13 @@ node_modules/
 .env
 .env.local
 
+# Compiled files in src (should only contain .ts source)
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+!src/renderer/types.d.ts
+
 # Gateway binaries (large files)
 resources/gateway/*
 resources/node/
@@ -25,3 +32,6 @@ pnpm-workspace.yaml
 
 # OS
 Thumbs.db
+
+# Git hooks (tracked in .git-hooks/, not .git/hooks/)
+.git/hooks/

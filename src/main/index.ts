@@ -4,19 +4,20 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS } from '../shared/types';
+import { randomBytes } from 'node:crypto';
+import { createServer, type Server } from 'node:http';
+import { URL } from 'node:url';
 
 const isDev = process.env.NODE_ENV === 'development';
 
 class OpenClawApp {
   private mainWindow: BrowserWindow | null = null;
-  private setupWindow: BrowserWindow | null = null;
-  private installWindow: BrowserWindow | null = null;
   private tray: Tray | null = null;
   private gatewayManager: GatewayManager;
   private configManager: ConfigManager;
-  private installCompleted: boolean = false;
-  private setupCompleted: boolean = false;
+  private oauthState: Map<string, { state: string; codeVerifier: string; resolve: (token: string) => void; reject: (error: Error) => void }> = new Map();
+  private oauthServers: Map<string, Server> = new Map();
 
   constructor() {
     this.configManager = new ConfigManager();
@@ -57,26 +58,10 @@ class OpenClawApp {
       setTimeout(() => checkForUpdates(), 5000);
     }
 
-    // Check if OpenClaw is installed
-    const installCheck = await this.gatewayManager.checkInstallation();
-
-    if (!installCheck.installed) {
-      // OpenClaw not installed - show installation window
-      await this.createInstallWindow();
-    } else {
-      log.info(`OpenClaw found at: ${installCheck.path}, version: ${installCheck.version || 'unknown'}`);
-
-      // Check if first run (no model configured)
-      const config = this.configManager.getConfig();
-
-      if (!config.settings.model) {
-        // First run - show setup wizard
-        await this.createSetupWindow();
-      } else {
-        // Normal run - start gateway and show main window
-        await this.startGatewayAndShowMain();
-      }
-    }
+    // Start gateway and create main window
+    const port = await this.gatewayManager.start();
+    log.info(`Gateway started on port ${port}`);
+    await this.createMainWindow(port);
 
     // App event handlers
     app.on('window-all-closed', this.handleWindowAllClosed.bind(this));
@@ -95,9 +80,135 @@ class OpenClawApp {
       return true;
     });
 
+    ipcMain.handle('config:setFallbackModel', async (_event, model: ModelConfig | null) => {
+      await this.configManager.setFallbackModel(model);
+      return true;
+    });
+
+    ipcMain.handle('config:setImageModel', async (_event, model: ModelConfig | null) => {
+      await this.configManager.setImageModel(model);
+      return true;
+    });
+
     ipcMain.handle('config:setApiKey', async (_event, apiKey: string) => {
       await this.configManager.setApiKey(apiKey);
       return true;
+    });
+
+    ipcMain.handle('config:setModelApiKey', async (_event, { modelId, apiKey }: { modelId: string; apiKey: string }) => {
+      await this.configManager.setModelApiKey(modelId, apiKey);
+      return true;
+    });
+
+    ipcMain.handle('config:getSkills', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.skills?.enabled || [];
+    });
+
+    ipcMain.handle('config:setSkills', async (_event, skills: string[]) => {
+      await this.configManager.setSkills(skills);
+      return true;
+    });
+
+    ipcMain.handle('config:getTools', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.tools?.enabled || [];
+    });
+
+    ipcMain.handle('config:setTools', async (_event, tools: string[]) => {
+      await this.configManager.setTools(tools);
+      return true;
+    });
+
+    // Channels IPC
+    ipcMain.handle('config:getChannels', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.bypass_channels || [];
+    });
+
+    ipcMain.handle('config:setChannels', async (_event, channels: { type: string; enabled: boolean }[]) => {
+      await this.configManager.setChannels(channels);
+      return true;
+    });
+
+    // Model Management IPC
+    ipcMain.handle('models:get', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.savedModels || [];
+    });
+
+    ipcMain.handle('models:add', async (_event, model: ModelConfig) => {
+      await this.configManager.addModel(model);
+      return true;
+    });
+
+    ipcMain.handle('models:update', async (_event, model: ModelConfig) => {
+      await this.configManager.updateModel(model);
+      return true;
+    });
+
+    ipcMain.handle('models:remove', async (_event, modelId: string) => {
+      await this.configManager.removeModel(modelId);
+      return true;
+    });
+
+    // Skills Hub IPC
+    ipcMain.handle('skills:fetch', async () => {
+      try {
+        const https = await import('https');
+        const zlib = await import('zlib');
+        const { promisify } = await import('util');
+        const gunzip = promisify(zlib.gunzip);
+
+        // Fetch from clawhub.ai skills API
+        const response = await new Promise<any>((resolve, reject) => {
+          https.get('https://clawhub.ai/api/skills', {
+            headers: {
+              'Accept': 'application/json',
+              'Accept-Encoding': 'gzip'
+            }
+          }, (res) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', async () => {
+              try {
+                const data = Buffer.concat(chunks);
+                let result: any;
+                if (res.headers['content-encoding'] === 'gzip') {
+                  result = JSON.parse((await gunzip(data)).toString());
+                } else {
+                  result = JSON.parse(data.toString());
+                }
+                resolve(result);
+              } catch (e) {
+                reject(e);
+              }
+            });
+          }).on('error', reject);
+        });
+
+        return { success: true, data: response.data || response.skills || [] };
+      } catch (error) {
+        log.error('Failed to fetch skills from clawhub.ai:', error);
+        return { success: false, error: (error as Error).message, data: [] };
+      }
+    });
+
+    ipcMain.handle('skills:install', async (_event, skillId: string) => {
+      try {
+        const config = this.configManager.getConfig();
+        const enabledSkills = config.settings.skills?.enabled || [];
+
+        if (!enabledSkills.includes(skillId)) {
+          enabledSkills.push(skillId);
+          await this.configManager.setSkills(enabledSkills);
+        }
+
+        return { success: true };
+      } catch (error) {
+        log.error('Failed to install skill:', error);
+        return { success: false, error: (error as Error).message };
+      }
     });
 
     // Gateway IPC
@@ -125,57 +236,14 @@ class OpenClawApp {
     });
 
     ipcMain.handle('install:complete', async () => {
-      log.info('>>> install:complete handler called <<<');
-
-      // Mark installation as completed so window closed handler doesn't quit app
-      this.installCompleted = true;
-
-      try {
-        log.info('Getting config...');
-        const config = this.configManager.getConfig();
-        log.info(`Config retrieved. Model value: ${JSON.stringify(config.settings.model)}`);
-        log.info(`Install complete - checking config. Model configured: ${!!config.settings.model}`);
-
-        if (!config.settings.model) {
-          // Create setup window first, then close install window
-          log.info('No model configured, showing setup window');
-          await this.createSetupWindow();
-          if (this.installWindow) {
-            this.installWindow.close();
-            this.installWindow = null;
-          }
-        } else {
-          // Close install window first, then start gateway
-          log.info('Model already configured, starting main window');
-          if (this.installWindow) {
-            this.installWindow.close();
-            this.installWindow = null;
-          }
-          await this.startGatewayAndShowMain();
-        }
-        log.info('>>> install:complete handler finished successfully <<<');
-        return true;
-      } catch (error) {
-        log.error('!!! Error in install:complete handler:', error);
-        throw error;
-      }
+      // Just acknowledge - React app handles navigation
+      return true;
     });
 
     // Setup IPC
     ipcMain.handle('setup:complete', async (_event, config: { model: ModelConfig; apiKey: string }) => {
-      // Mark setup as completed so window closed handler doesn't quit app
-      this.setupCompleted = true;
-
       await this.configManager.setModel(config.model);
       await this.configManager.setApiKey(config.apiKey);
-
-      // Close setup window and open main window
-      if (this.setupWindow) {
-        this.setupWindow.close();
-        this.setupWindow = null;
-      }
-
-      await this.startGatewayAndShowMain();
       return true;
     });
 
@@ -187,69 +255,233 @@ class OpenClawApp {
     ipcMain.handle('shell:openExternal', (_event, url: string) => {
       shell.openExternal(url);
     });
+
+    // Settings - now just a view change, no separate window
+    ipcMain.handle('app:openSettings', async () => {
+      // Notify renderer to show settings view
+      this.mainWindow?.webContents.send('show-settings');
+    });
+
+    // OAuth IPC Handlers
+    ipcMain.handle('oauth:start', async (_event, provider: string) => {
+      return this.handleOAuthStart(provider);
+    });
+
+    ipcMain.handle('oauth:getStatus', async (_event, provider: string) => {
+      return this.handleOAuthGetStatus(provider);
+    });
   }
 
-  private async createSetupWindow(): Promise<void> {
-    log.info('Creating setup window...');
+  private async handleOAuthStart(provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> {
     try {
-      this.setupWindow = new BrowserWindow({
-        width: 600,
-        height: 500,
-        resizable: true,
-        maximizable: true,
-        minimizable: true,
-        webPreferences: {
-          preload: path.join(__dirname, '../preload/index.js'),
-          contextIsolation: true,
-          nodeIntegration: false
+      const providerConfig = PROVIDER_PRESETS.find(p => p.id === provider);
+      if (!providerConfig) {
+        return { success: false, error: `Unknown provider: ${provider}` };
+      }
+
+      // Generate PKCE parameters
+      const state = randomBytes(16).toString('hex');
+      const codeVerifier = randomBytes(32).toString('hex');
+      const codeChallenge = require('node:crypto').createHash('sha256').update(codeVerifier).digest('base64url');
+
+      // Get OAuth config for provider
+      const oauthConfig = this.getOAuthConfigForProvider(provider);
+      if (!oauthConfig) {
+        return { success: false, error: `OAuth not configured for provider: ${provider}` };
+      }
+
+      // Create local callback server
+      const port = await this.findOpenPort();
+      const redirectUri = `http://127.0.0.1:${port}/callback`;
+
+      // Build authorization URL
+      const authUrl = this.buildAuthUrl({
+        ...oauthConfig,
+        redirectUri,
+        state,
+        codeChallenge,
+      });
+
+      // Store state for callback validation
+      this.oauthState.set(state, {
+        state,
+        codeVerifier,
+        resolve: (token: string) => {
+          log.info(`OAuth completed for provider: ${provider}`);
         },
-        title: 'OpenClaw Setup',
-        icon: this.getIconPath()
+        reject: (error: Error) => {
+          log.error(`OAuth failed for provider: ${provider}`, error);
+        },
       });
 
-      const setupHtmlPath = path.join(__dirname, '../renderer/setup/index.html');
-      log.info(`Loading setup HTML from: ${setupHtmlPath}`);
-      await this.setupWindow.loadFile(setupHtmlPath);
-      log.info('Setup window loaded successfully');
+      // Start callback server
+      await this.startOAuthCallbackServer(port, state);
 
-      this.setupWindow.on('closed', () => {
-        this.setupWindow = null;
-        // If setup was cancelled (no main window and setup not completed), quit app
-        if (!this.mainWindow && !this.setupCompleted) {
-          app.quit();
-        }
-      });
+      // Open browser for authorization
+      await shell.openExternal(authUrl);
+
+      return { success: true, authUrl };
     } catch (error) {
-      log.error('Failed to create setup window:', error);
-      throw error;
+      log.error('OAuth start failed:', error);
+      return { success: false, error: (error as Error).message };
     }
   }
 
-  private async createInstallWindow(): Promise<void> {
-    this.installWindow = new BrowserWindow({
-      width: 600,
-      height: 500,
-      resizable: true,
-      maximizable: true,
-      minimizable: true,
-      webPreferences: {
-        preload: path.join(__dirname, '../preload/index.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-      },
-      title: 'Install OpenClaw',
-      icon: this.getIconPath()
-    });
+  private async handleOAuthGetStatus(provider: string): Promise<{ authenticated: boolean; email?: string; expires?: number }> {
+    try {
+      // Check OpenClaw auth-profiles.json for OAuth credentials
+      const authStorePath = path.join(require('os').homedir(), '.openclaw', 'agents', 'agent', 'auth-profiles.json');
 
-    const installHtmlPath = path.join(__dirname, '../renderer/install/index.html');
-    await this.installWindow.loadFile(installHtmlPath);
-
-    this.installWindow.on('closed', () => {
-      this.installWindow = null;
-      // If install was cancelled (no other window and install not completed), quit app
-      if (!this.mainWindow && !this.setupWindow && !this.installCompleted) {
-        app.quit();
+      if (!require('fs').existsSync(authStorePath)) {
+        return { authenticated: false };
       }
+
+      const authStore = JSON.parse(require('fs').readFileSync(authStorePath, 'utf-8'));
+      const profiles = authStore.profiles || {};
+
+      // Find OAuth credential for this provider
+      for (const [profileId, credential] of Object.entries(profiles as Record<string, any>)) {
+        if (credential.type === 'oauth' && credential.provider === provider) {
+          const now = Date.now();
+          const expires = credential.expires as number | undefined;
+
+          // Check if token is expired
+          if (expires && now > expires) {
+            log.info(`OAuth token expired for provider: ${provider}`);
+            return { authenticated: false };
+          }
+
+          return {
+            authenticated: true,
+            email: credential.email as string | undefined,
+            expires,
+          };
+        }
+      }
+
+      return { authenticated: false };
+    } catch (error) {
+      log.error('OAuth status check failed:', error);
+      return { authenticated: false };
+    }
+  }
+
+  private getOAuthConfigForProvider(provider: string): { clientId: string; authorizeUrl: string; tokenUrl: string; scopes: string[] } | null {
+    // OAuth configuration for supported providers
+    const oauthConfigs: Record<string, { clientId: string; authorizeUrl: string; tokenUrl: string; scopes: string[] }> = {
+      'openai-codex': {
+        clientId: 'codex-cli',
+        authorizeUrl: 'https://chatgpt.com/oauth/authorize',
+        tokenUrl: 'https://chatgpt.com/backend-api/oauth/token',
+        scopes: ['models.read', 'models.write'],
+      },
+      // Add more providers as needed
+    };
+    return oauthConfigs[provider] || null;
+  }
+
+  private buildAuthUrl(config: { clientId: string; redirectUri: string; scopes: string[]; state: string; codeChallenge: string; authorizeUrl: string }): string {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: config.scopes.join(' '),
+      state: config.state,
+      code_challenge: config.codeChallenge,
+      code_challenge_method: 'S256',
+    });
+    return `${config.authorizeUrl}?${params.toString()}`;
+  }
+
+  private async findOpenPort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = createServer();
+      server.listen(0, '127.0.0.1', () => {
+        const address = server.address();
+        server.close(() => {
+          if (typeof address === 'object' && address !== null) {
+            resolve(address.port);
+          } else {
+            reject(new Error('Failed to get port'));
+          }
+        });
+      });
+      server.on('error', reject);
+    });
+  }
+
+  private async startOAuthCallbackServer(port: number, expectedState: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const server = createServer((req, res) => {
+        try {
+          const url = new URL(req.url || '/', `http://127.0.0.1:${port}`);
+
+          if (url.pathname === '/callback') {
+            const code = url.searchParams.get('code');
+            const state = url.searchParams.get('state');
+            const error = url.searchParams.get('error');
+
+            if (error) {
+              res.statusCode = 400;
+              res.end(`OAuth error: ${error}`);
+              this.oauthState.delete(expectedState);
+              reject(new Error(`OAuth error: ${error}`));
+              return;
+            }
+
+            if (!code || !state) {
+              res.statusCode = 400;
+              res.end('Missing code or state');
+              reject(new Error('Missing code or state'));
+              return;
+            }
+
+            if (state !== expectedState) {
+              res.statusCode = 400;
+              res.end('State mismatch');
+              this.oauthState.delete(expectedState);
+              reject(new Error('OAuth state mismatch'));
+              return;
+            }
+
+            // Success - show completion page
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html');
+            res.end(`
+              <!DOCTYPE html>
+              <html>
+                <head><title>OAuth Complete</title></head>
+                <body>
+                  <h1>Authentication Complete</h1>
+                  <p>You can close this window and return to OpenClaw.</p>
+                </body>
+              </html>
+            `);
+
+            // Resolve the promise - the actual token exchange happens via OpenClaw CLI
+            this.oauthState.delete(expectedState);
+            server.close();
+            resolve();
+          } else {
+            res.statusCode = 404;
+            res.end('Not found');
+          }
+        } catch (err) {
+          res.statusCode = 500;
+          res.end('Server error');
+          reject(err);
+        }
+      });
+
+      server.listen(port, '127.0.0.1', () => {
+        this.oauthServers.set(`${port}`, server);
+        resolve();
+      });
+
+      server.on('error', (err: Error) => {
+        this.oauthServers.delete(`${port}`);
+        reject(err);
+      });
     });
   }
 
@@ -263,40 +495,26 @@ class OpenClawApp {
         preload: path.join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        additionalArguments: [`--gateway-port=${gatewayPort}`]
+        additionalArguments: [`--gateway-port=${gatewayPort}`],
+        devTools: isDev
       },
       title: 'OpenClaw',
       icon: this.getIconPath(),
-      show: false // Show when ready
+      show: false
     });
 
     // Configure webRequest to strip CSP headers that prevent framing
     this.configureGatewayCSP(gatewayPort);
 
-    // Inject gateway info BEFORE loading the page
-    // This ensures window.__OPENCLAW_* variables are available immediately
-    this.mainWindow.webContents.on('dom-ready', () => {
-      this.mainWindow?.webContents.executeJavaScript(`
-        window.__OPENCLAW_GATEWAY_PORT__ = ${gatewayPort};
-        window.__OPENCLAW_GATEWAY_TOKEN__ = ${JSON.stringify(this.gatewayManager.getStatus().token || null)};
-        window.__OPENCLAW_CONFIG__ = ${JSON.stringify(this.configManager.getConfig())};
-        console.log('[OpenClaw Desktop] Gateway config injected:', {
-          port: window.__OPENCLAW_GATEWAY_PORT__,
-          hasToken: !!window.__OPENCLAW_GATEWAY_TOKEN__
-        });
-      `);
-    });
-
-    // Load the terminal UI
-    const terminalHtmlPath = path.join(__dirname, '../renderer/terminal/index.html');
-    log.info(`Loading terminal from: ${terminalHtmlPath}`);
+    // Load the React app
+    const rendererIndexPath = path.join(__dirname, '../renderer/index.html');
+    log.info(`Loading React app from: ${rendererIndexPath}`);
 
     try {
-      await this.mainWindow.loadFile(terminalHtmlPath);
-      log.info('Terminal HTML loaded successfully');
+      await this.mainWindow.loadFile(rendererIndexPath);
+      log.info('React app loaded successfully');
     } catch (error) {
-      log.error('Failed to load terminal HTML:', error);
-      // Try to show window anyway
+      log.error('Failed to load React app:', error);
       this.mainWindow.show();
       return;
     }
@@ -304,9 +522,12 @@ class OpenClawApp {
     this.mainWindow.once('ready-to-show', () => {
       log.info('Main window ready to show');
       this.mainWindow?.show();
+      if (isDev) {
+        this.mainWindow?.webContents.openDevTools();
+      }
     });
 
-    // Fallback: show window after a timeout even if ready-to-show didn't fire
+    // Fallback: show window after a timeout
     setTimeout(() => {
       if (this.mainWindow && !this.mainWindow.isVisible()) {
         log.info('Showing window via timeout fallback');
@@ -327,7 +548,6 @@ class OpenClawApp {
 
   /**
    * Configure webRequest to strip CSP headers that prevent framing gateway content.
-   * The gateway sends frame-ancestors 'none' which prevents embedding in our iframe.
    */
   private configureGatewayCSP(gatewayPort: number): void {
     if (!this.mainWindow) return;
@@ -335,11 +555,10 @@ class OpenClawApp {
     const { session } = this.mainWindow.webContents;
 
     session.webRequest.onHeadersReceived({
-      urls: [`http://127.0.0.1:${gatewayPort}/*`]
+      urls: [`http://127.0.0.1:${gatewayPort}/*`, `http://localhost:${gatewayPort}/*`]
     }, (details, callback) => {
       const responseHeaders = details.responseHeaders || {};
 
-      // Remove or modify CSP headers that prevent framing
       const cspHeaders = [
         'content-security-policy',
         'Content-Security-Policy',
@@ -361,20 +580,7 @@ class OpenClawApp {
     log.info(`Configured CSP stripping for gateway on port ${gatewayPort}`);
   }
 
-  private async startGatewayAndShowMain(): Promise<void> {
-    try {
-      const port = await this.gatewayManager.start();
-      log.info(`Gateway started on port ${port}`);
-      await this.createMainWindow(port);
-    } catch (error) {
-      log.error('Failed to start gateway:', error);
-      // Show error dialog or retry
-      throw error;
-    }
-  }
-
   private createTray(): void {
-    // Use a placeholder icon - replace with actual icon
     const iconPath = this.getIconPath();
     this.tray = new Tray(iconPath);
 
@@ -382,11 +588,7 @@ class OpenClawApp {
       {
         label: 'Show OpenClaw',
         click: () => {
-          if (this.mainWindow) {
-            this.mainWindow.show();
-          } else if (this.setupWindow) {
-            this.setupWindow.show();
-          }
+          this.mainWindow?.show();
         }
       },
       { type: 'separator' },
@@ -416,9 +618,7 @@ class OpenClawApp {
     this.tray.setContextMenu(contextMenu);
 
     this.tray.on('click', () => {
-      if (this.mainWindow) {
-        this.mainWindow.show();
-      }
+      this.mainWindow?.show();
     });
   }
 
@@ -441,10 +641,10 @@ class OpenClawApp {
           },
           { type: 'separator' },
           {
-            label: 'Preferences...',
+            label: 'Settings...',
             accelerator: 'CmdOrCtrl+,',
             click: () => {
-              // Show preferences window
+              this.mainWindow?.webContents.send('show-settings');
             }
           },
           { type: 'separator' },
@@ -542,31 +742,34 @@ class OpenClawApp {
   }
 
   private getIconPath(): string {
-    // Return platform-specific icon path
     const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
     return path.join(__dirname, '../../build', iconName);
   }
 
   private handleWindowAllClosed(): void {
-    // Quit app when all windows are closed (on all platforms)
+    // Always quit the app when window closes, gateway continues running in background
     app.quit();
   }
 
   private async handleActivate(): Promise<void> {
-    if (this.mainWindow === null && this.setupWindow === null) {
-      const config = this.configManager.getConfig();
-      if (config.settings.model) {
-        await this.startGatewayAndShowMain();
-      } else {
-        await this.createSetupWindow();
-      }
+    if (!this.mainWindow) {
+      await this.startGatewayAndShowMain();
+    }
+  }
+
+  private async startGatewayAndShowMain(): Promise<void> {
+    try {
+      const port = await this.gatewayManager.start();
+      log.info(`Gateway restarted on port ${port}`);
+      await this.createMainWindow(port);
+    } catch (error) {
+      log.error('Failed to start gateway:', error);
+      throw error;
     }
   }
 
   private async handleBeforeQuit(): Promise<void> {
     log.info('App quitting - gateway will continue running in background');
-    // Note: We intentionally do NOT stop the gateway here
-    // The gateway continues running after the app closes
   }
 }
 

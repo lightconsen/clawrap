@@ -1,0 +1,66 @@
+#!/bin/bash
+# Git post-merge hook to ensure package.json version is bumped on main branch merges
+# Install: cp .git/hooks/post-merge .git/hooks/post-merge && chmod +x .git/hooks/post-merge
+
+# Only run on main branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    exit 0
+fi
+
+# Check if this was an actual merge (not a fast-forward)
+if [ "$1" != "1" ]; then
+    exit 0
+fi
+
+PACKAGE_JSON="package.json"
+
+# Get the version before merge (from MERGE_HEAD or FETCH_HEAD)
+PRE_MERGE_VERSION=$(git show MERGE_HEAD^1:$PACKAGE_JSON 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+
+# If MERGE_HEAD doesn't exist (fast-forward), use the previous commit
+if [ -z "$PRE_MERGE_VERSION" ]; then
+    PRE_MERGE_VERSION=$(git show HEAD^:$PACKAGE_JSON 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+fi
+
+# Get the current version after merge
+CURRENT_VERSION=$(grep '"version"' $PACKAGE_JSON | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+
+# If we couldn't get versions, exit silently
+if [ -z "$PRE_MERGE_VERSION" ] || [ -z "$CURRENT_VERSION" ]; then
+    exit 0
+fi
+
+# Compare versions using sort -V (version sort)
+# If current <= previous, we need to bump
+HIGHER_VERSION=$(printf '%s\n%s' "$PRE_MERGE_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)
+
+# Check if current version is greater than pre-merge version
+if [ "$CURRENT_VERSION" != "$HIGHER_VERSION" ] || [ "$CURRENT_VERSION" == "$PRE_MERGE_VERSION" ]; then
+    echo "⚠️  Package version not bumped! Pre-merge: $PRE_MERGE_VERSION, Current: $CURRENT_VERSION"
+    echo "   Auto-bumping patch version..."
+
+    # Extract version parts
+    MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+    MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+    PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+
+    # Bump patch version
+    NEW_PATCH=$((PATCH + 1))
+    NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+    # Update package.json
+    if command -v jq &> /dev/null; then
+        jq --arg version "$NEW_VERSION" '.version = $version' $PACKAGE_JSON > $PACKAGE_JSON.tmp && mv $PACKAGE_JSON.tmp $PACKAGE_JSON
+    else
+        # Fallback without jq
+        sed -i.bak "s/\"version\": *\"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" $PACKAGE_JSON
+        rm -f $PACKAGE_JSON.bak
+    fi
+
+    echo "   Bumped version to: $NEW_VERSION"
+    echo "   Don't forget to commit the version bump!"
+
+    # Stage the updated package.json
+    git add $PACKAGE_JSON
+fi
