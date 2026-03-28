@@ -11,6 +11,7 @@ interface AppState {
   savedModels: ModelConfig[];
   skills: string[];
   tools: string[];
+  channels: { type: string; enabled: boolean }[];
   isLoading: boolean;
   error: string | null;
   initialViewLoaded: boolean;
@@ -23,6 +24,7 @@ type Action =
   | { type: 'SET_SAVED_MODELS'; payload: ModelConfig[] }
   | { type: 'SET_SKILLS'; payload: string[] }
   | { type: 'SET_TOOLS'; payload: string[] }
+  | { type: 'SET_CHANNELS'; payload: { type: string; enabled: boolean }[] }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_INITIAL_VIEW_LOADED'; payload: boolean }
@@ -35,6 +37,7 @@ const initialState: AppState = {
   savedModels: [],
   skills: [],
   tools: [],
+  channels: [],
   isLoading: true,
   error: null,
   initialViewLoaded: false,
@@ -54,6 +57,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, skills: action.payload };
     case 'SET_TOOLS':
       return { ...state, tools: action.payload };
+    case 'SET_CHANNELS':
+      return { ...state, channels: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
@@ -100,6 +105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_CONFIG', payload: config });
         dispatch({ type: 'SET_SKILLS', payload: config.settings.skills?.enabled || [] });
         dispatch({ type: 'SET_TOOLS', payload: config.settings.tools?.enabled || [] });
+        dispatch({ type: 'SET_CHANNELS', payload: config.settings.bypass_channels || [] });
         dispatch({ type: 'SET_SAVED_MODELS', payload: config.settings.savedModels || [] });
 
         let initialView: AppView = 'terminal';
@@ -266,5 +272,19 @@ export function useTools() {
   return {
     tools: state.tools,
     setTools,
+  };
+}
+
+export function useChannels() {
+  const { state, dispatch } = useApp();
+
+  const setChannels = useCallback(async (channels: { type: string; enabled: boolean }[]) => {
+    await ipc.setChannels(channels);
+    dispatch({ type: 'SET_CHANNELS', payload: channels });
+  }, [dispatch]);
+
+  return {
+    channels: state.channels,
+    setChannels,
   };
 }

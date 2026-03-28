@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSkills: (skills: string[]): Promise<boolean> => debugInvoke('config:setSkills', skills),
   getTools: (): Promise<string[]> => debugInvoke('config:getTools'),
   setTools: (tools: string[]): Promise<boolean> => debugInvoke('config:setTools', tools),
+  getChannels: (): Promise<{ type: string; enabled: boolean }[]> => debugInvoke('config:getChannels'),
+  setChannels: (channels: { type: string; enabled: boolean }[]): Promise<boolean> => debugInvoke('config:setChannels', channels),
 
   // Model Management API
   getSavedModels: (): Promise<ModelConfig[]> => debugInvoke('models:get'),
@@ -73,6 +75,8 @@ declare global {
       setSkills: (skills: string[]) => Promise<boolean>;
       getTools: () => Promise<string[]>;
       setTools: (tools: string[]) => Promise<boolean>;
+      getChannels: () => Promise<{ type: string; enabled: boolean }[]>;
+      setChannels: (channels: { type: string; enabled: boolean }[]) => Promise<boolean>;
       getSettingsData: () => Promise<{ config: OpenClawConfig; status: GatewayStatus; installCheck: { installed: boolean; path?: string; version?: string } }>;
       getGatewayStatus: () => Promise<GatewayStatus>;
       restartGateway: () => Promise<GatewayStatus>;

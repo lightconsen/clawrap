@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ModelConfig } from '@shared/types';
@@ -11,6 +11,7 @@ export function SettingsView() {
   const { gatewayStatus, restartGateway } = useGateway();
   const { skills, setSkills } = useSkills();
   const { tools, setTools } = useTools();
+  const { channels, setChannels } = useChannels();
 
   const config = state.config;
 
@@ -39,6 +40,13 @@ export function SettingsView() {
       ? tools.filter(t => t !== toolId)
       : [...tools, toolId];
     await setTools(newTools);
+  };
+
+  const handleChannelToggle = async (channelType: string) => {
+    const newChannels = channels.map(c =>
+      c.type === channelType ? { ...c, enabled: !c.enabled } : c
+    );
+    await setChannels(newChannels);
   };
 
   const handleEditModel = (modelId: string) => {
@@ -173,8 +181,33 @@ export function SettingsView() {
         <p className="subtitle">{TEXTS.tools.subtitle}</p>
       </div>
       <div className="tools-grid">
-        {/* Tools would be populated similarly to skills */}
         <p className="help-text">Tools configuration coming soon...</p>
+      </div>
+    </div>
+  );
+
+  const renderChannelsSection = () => (
+    <div className="channels-section">
+      <div className="section-header">
+        <h2>{TEXTS.settings.channels}</h2>
+        <p className="subtitle">{TEXTS.channels.subtitle}</p>
+      </div>
+      <div className="channels-grid">
+        {channels.map(channel => {
+          const channelName = (TEXTS.channels as any)[channel.type] || channel.type;
+          return (
+            <div key={channel.type} className={`channel-card ${channel.enabled ? 'enabled' : ''}`}>
+              <label className="channel-toggle">
+                <input
+                  type="checkbox"
+                  checked={channel.enabled}
+                  onChange={() => handleChannelToggle(channel.type)}
+                />
+                <span className="channel-name">{channelName}</span>
+              </label>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -216,7 +249,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['models', 'skills', 'tools', 'gateway', 'about'] as const).map(section => (
+            {(['models', 'skills', 'tools', 'channels', 'gateway', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -232,6 +265,7 @@ export function SettingsView() {
           {activeSection === 'models' && renderModelsSection()}
           {activeSection === 'skills' && renderSkillsSection()}
           {activeSection === 'tools' && renderToolsSection()}
+          {activeSection === 'channels' && renderChannelsSection()}
           {activeSection === 'gateway' && renderGatewaySection()}
           {activeSection === 'about' && (
             <div className="about-section">

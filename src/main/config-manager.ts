@@ -182,6 +182,22 @@ export class ConfigManager {
     log.info(`Tools updated: ${tools.length} enabled`);
   }
 
+  async getChannels(): Promise<{ type: string; enabled: boolean }[]> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    return this.config.settings.bypass_channels || [];
+  }
+
+  async setChannels(channels: { type: string; enabled: boolean }[]): Promise<void> {
+    if (!this.config) {
+      throw new Error('Config not initialized');
+    }
+    this.config.settings.bypass_channels = channels;
+    await this.saveConfig();
+    log.info(`Channels updated: ${channels.length} configured`);
+  }
+
   async getSavedModels(): Promise<ModelConfig[]> {
     if (!this.config) {
       throw new Error('Config not initialized');

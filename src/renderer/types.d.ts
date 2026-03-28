@@ -12,6 +12,8 @@ export interface ElectronAPI {
   setSkills: (skills: string[]) => Promise<boolean>;
   getTools: () => Promise<string[]>;
   setTools: (tools: string[]) => Promise<boolean>;
+  getChannels: () => Promise<{ type: string; enabled: boolean }[]>;
+  setChannels: (channels: { type: string; enabled: boolean }[]) => Promise<boolean>;
 
   // Model Management API
   getSavedModels: () => Promise<ModelConfig[]>;

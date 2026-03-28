@@ -898,6 +898,42 @@ body {
   font-weight: 500;
 }
 
+/* Channels */
+.channels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.channel-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.channel-card.enabled {
+  border-color: var(--success);
+  background: rgba(166, 227, 161, 0.05);
+}
+
+.channel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.channel-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.channel-name {
+  font-weight: 500;
+}
+
 .status-item {
   display: flex;
   gap: 16px;

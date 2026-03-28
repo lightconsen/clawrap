@@ -115,6 +115,17 @@ class OpenClawApp {
       return true;
     });
 
+    // Channels IPC
+    ipcMain.handle('config:getChannels', async () => {
+      const config = this.configManager.getConfig();
+      return config.settings.bypass_channels || [];
+    });
+
+    ipcMain.handle('config:setChannels', async (_event, channels: { type: string; enabled: boolean }[]) => {
+      await this.configManager.setChannels(channels);
+      return true;
+    });
+
     // Model Management IPC
     ipcMain.handle('models:get', async () => {
       const config = this.configManager.getConfig();

@@ -75,6 +75,7 @@ export const TEXTS = {
     models: 'Models',
     skills: 'Skills',
     tools: 'Tools',
+    channels: 'Channels',
     gateway: 'Gateway',
     about: 'About',
 
@@ -154,6 +155,13 @@ export const TEXTS = {
   tools: {
     title: 'Tools',
     subtitle: 'Manage enabled tools for your agent',
+  },
+
+  // Channels View
+  channels: {
+    title: 'Channels',
+    subtitle: 'Manage bypass channels for different AI assistants',
+    claude_code: 'Claude Code',
   },
 
   // Common

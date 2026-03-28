@@ -13,6 +13,8 @@ export const ipc = {
   setSkills: (skills: string[]): Promise<boolean> => window.electronAPI.setSkills(skills),
   getTools: (): Promise<string[]> => window.electronAPI.getTools(),
   setTools: (tools: string[]): Promise<boolean> => window.electronAPI.setTools(tools),
+  getChannels: (): Promise<{ type: string; enabled: boolean }[]> => window.electronAPI.getChannels(),
+  setChannels: (channels: { type: string; enabled: boolean }[]): Promise<boolean> => window.electronAPI.setChannels(channels),
 
   // Models
   getSavedModels: (): Promise<ModelConfig[]> => window.electronAPI.getSavedModels(),
