@@ -1,4 +1,4 @@
-/* CSS Variables */
+/* CSS Variables - Dark Theme (default) */
 :root {
   --bg-primary: #1e1e2e;
   --bg-secondary: #2a2a3c;
@@ -11,6 +11,23 @@
   --warning: #fab387;
   --error: #f38ba8;
   --border: #45475a;
+}
+
+/* Light Theme */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-card: #ffffff;
+    --text-primary: #1a1a2e;
+    --text-secondary: #5a5a7a;
+    --accent-primary: #4a90d9;
+    --accent-secondary: #4db6ac;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --error: #f44336;
+    --border: #e0e0e0;
+  }
 }
 
 * {
