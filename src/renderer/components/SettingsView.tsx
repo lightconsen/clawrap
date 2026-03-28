@@ -86,15 +86,7 @@ export function SettingsView() {
                     </div>
                     <div className="status-row">
                       <span className="status-label">{TEXTS.settings.model}:</span>
-                      <span className="status-value">{model.name} ({model.id})</span>
-                    </div>
-                    <div className="status-row">
-                      <span className="status-label">{TEXTS.settings.baseUrl}:</span>
-                      <span className="status-value">{model.baseUrl || '-'}</span>
-                    </div>
-                    <div className="status-row">
-                      <span className="status-label">{TEXTS.settings.apiKeyLabel}:</span>
-                      <span className="status-value">{model.apiKey ? '••••••••' : TEXTS.settings.notSet}</span>
+                      <span className="status-value">{model.name}</span>
                     </div>
                   </div>
                 ) : (
