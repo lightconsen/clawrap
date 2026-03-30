@@ -42,23 +42,31 @@ export function SettingsView() {
     }
   }, [activeSection, refreshMemory]);
 
+  // Track if we've initialized the agent section
+  const agentInitialized = React.useRef(false);
+
   // Poll agent info when on agent section
   React.useEffect(() => {
-    if (activeSection === 'agent') {
+    if (activeSection === 'agent' && !agentInitialized.current) {
+      agentInitialized.current = true;
       refreshAgentList().then((agents) => {
         if (agents.length > 0) {
           // Prefer 'main' agent as default, otherwise use first available
           const mainAgent = agents.find(a => a.id === 'main');
           const targetAgentId = mainAgent ? 'main' : agents[0].id;
-          if (selectedAgentId !== targetAgentId) {
-            setSelectedAgentId(targetAgentId);
-          }
-          // Always load main agent info when opening section
-          refreshAgentInfo('main');
+          setSelectedAgentId(targetAgentId);
+          refreshAgentInfo(targetAgentId);
         }
       });
     }
-  }, [activeSection, selectedAgentId, refreshAgentList, refreshAgentInfo]);
+  }, [activeSection, refreshAgentList, refreshAgentInfo]);
+
+  // Refresh agent info when selectedAgentId changes (after initial load)
+  React.useEffect(() => {
+    if (activeSection === 'agent' && agentInitialized.current && selectedAgentId) {
+      refreshAgentInfo(selectedAgentId);
+    }
+  }, [activeSection, selectedAgentId, refreshAgentInfo]);
 
   // Load cron jobs when on crons section
   React.useEffect(() => {
@@ -710,7 +718,6 @@ export function SettingsView() {
                       className={`agent-tab ${selectedAgentId === agent.id ? 'active' : ''}`}
                       onClick={() => {
                         setSelectedAgentId(agent.id);
-                        refreshAgentInfo(agent.id);
                       }}
                     >
                       {agent.name}
