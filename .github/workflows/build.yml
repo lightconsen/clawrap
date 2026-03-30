@@ -69,6 +69,11 @@ jobs:
                  ([ "$CURRENT_MAJOR" -eq "$PREV_MAJOR" ] && [ "$CURRENT_MINOR" -gt "$PREV_MINOR" ]); then
                 echo "major_minor_bump=true" >> $GITHUB_OUTPUT
                 echo "🚀 Major/Minor version bump detected: will trigger build"
+              # Check if this is a patch bump where BOTH versions have -build suffix (e.g., 1.0.4-build -> 1.0.5-build)
+              elif [[ "$CURRENT_VERSION" == *"-build" ]] && [[ "$PREV_VERSION" == *"-build" ]]; then
+                echo "major_minor_bump=false" >> $GITHUB_OUTPUT
+                echo "build_bump=true" >> $GITHUB_OUTPUT
+                echo "🔨 Build version bump detected: $PREV_VERSION → $CURRENT_VERSION (will trigger build test)"
               else
                 echo "major_minor_bump=false" >> $GITHUB_OUTPUT
                 echo "📝 Patch version bump detected: will NOT trigger build"
