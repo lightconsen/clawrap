@@ -1510,3 +1510,158 @@ body {
   outline: none;
   border-color: var(--accent-primary);
 }
+
+/* Agent Section */
+.agent-section {
+  margin-top: 20px;
+}
+
+.agent-tab-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.agent-tab {
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agent-tab:hover:not(:disabled) {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.agent-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.auth-indicator {
+  font-size: 12px;
+}
+
+.agent-details {
+  margin-top: 16px;
+}
+
+.agent-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.agent-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.agent-card h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.agent-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.stat-value.stat-code {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.stat-value.success {
+  color: var(--success);
+}
+
+.stat-value.error {
+  color: var(--error);
+}
+
+.auth-profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-profile-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.auth-profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.auth-profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.auth-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-primary {
+  background: rgba(137, 180, 250, 0.2);
+  color: var(--accent-primary);
+}
+
+.badge-secondary {
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--success);
+}
+

@@ -46,8 +46,13 @@ export function SettingsView() {
   React.useEffect(() => {
     if (activeSection === 'agent') {
       refreshAgentList().then((agents) => {
-        if (agents.length > 0 && !agents.find(a => a.id === selectedAgentId)) {
-          setSelectedAgentId(agents[0].id);
+        if (agents.length > 0) {
+          // Prefer 'main' agent as default, otherwise use first available
+          const mainAgent = agents.find(a => a.id === 'main');
+          const targetAgentId = mainAgent ? 'main' : agents[0].id;
+          if (selectedAgentId !== targetAgentId) {
+            setSelectedAgentId(targetAgentId);
+          }
         }
       });
       refreshAgentInfo(selectedAgentId);
