@@ -809,11 +809,21 @@ class OpenClawApp {
           }
         }
 
+        // Get command/description from payload
+        let command = 'Unknown';
+        if (job.payload?.kind === 'agentTurn') {
+          command = `Say: ${job.payload.message || job.payload.text || 'Hello'}`;
+        } else if (job.payload?.kind === 'systemEvent') {
+          command = `Event: ${job.payload.text || 'System event'}`;
+        } else if (job.payload?.text) {
+          command = `Event: ${job.payload.text}`;
+        }
+
         return {
           id: job.id,
           name: job.name || 'Unnamed Job',
           schedule,
-          command: job.payload?.kind === 'agentTurn' ? `Say: ${job.payload.message || 'Hello'}` : 'Unknown',
+          command,
           enabled: job.enabled ?? false,
           lastRun: job.state?.lastRunAtMs,
           lastOutput: job.state?.lastStatus || job.state?.lastRunStatus,
