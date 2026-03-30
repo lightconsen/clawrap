@@ -255,6 +255,7 @@ export interface OpenClawConfig {
     fallbackModel: ModelConfig | null;   // Fallback model
     imageModel: ModelConfig | null;      // Image-capable model
     savedModels: ModelConfig[];          // List of all saved models
+    cronJobs?: CronJob[];                // Scheduled cron jobs
   };
 }
 
@@ -333,3 +334,25 @@ export const AVAILABLE_SKILLS = [
   { id: "everything-claude-code:go-review", name: "Go Review", description: "Go code review" },
   { id: "everything-claude-code:security-reviewer", name: "Security Reviewer", description: "Security analysis" }
 ];
+
+export interface CronJob {
+  id: string;
+  name: string;
+  schedule: string;  // Cron expression (e.g., "0 9 * * *")
+  command: string;
+  enabled: boolean;
+  lastRun?: number;  // Timestamp
+  lastOutput?: string;
+  lastError?: string;
+  nextRun?: number;  // Timestamp
+}
+
+export interface CronLog {
+  jobId: string;
+  jobName: string;
+  timestamp: number;
+  output: string;
+  error?: string;
+  duration: number;  // milliseconds
+  exitCode: number;
+}

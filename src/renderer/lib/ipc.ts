@@ -1,5 +1,5 @@
 // Type-safe IPC wrapper for React components
-import { ModelConfig, OpenClawConfig, GatewayStatus } from '@shared/types';
+import { ModelConfig, OpenClawConfig, GatewayStatus, CronJob, CronLog } from '@shared/types';
 
 export const ipc = {
   // Config
@@ -44,4 +44,10 @@ export const ipc = {
   // Skills Hub
   fetchSkills: (): Promise<{ success: boolean; data: any[]; error?: string }> => window.electronAPI.fetchSkills(),
   installSkill: (skillId: string): Promise<{ success: boolean; error?: string }> => window.electronAPI.installSkill(skillId),
+
+  // Cron
+  getCronJobs: (): Promise<{ jobs: CronJob[] }> => window.electronAPI.getCronJobs(),
+  getCronLogs: (jobId?: string): Promise<{ logs: CronLog[] }> => window.electronAPI.getCronLogs(jobId),
+  runCronJob: (jobId: string): Promise<{ success: boolean; output?: string; error?: string }> => window.electronAPI.runCronJob(jobId),
+  toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => window.electronAPI.toggleCronJob(jobId, enabled),
 };

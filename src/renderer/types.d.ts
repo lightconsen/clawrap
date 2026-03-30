@@ -1,5 +1,5 @@
 /// <reference path="./assets.d.ts" />
-import { OpenClawConfig, GatewayStatus, ModelConfig } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog } from '../shared/types';
 
 export interface ElectronAPI {
   // Config API
@@ -48,6 +48,12 @@ export interface ElectronAPI {
   // OAuth API
   oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
   oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
+
+  // Cron API
+  getCronJobs: () => Promise<{ jobs: CronJob[] }>;
+  getCronLogs: (jobId?: string) => Promise<{ logs: CronLog[] }>;
+  runCronJob: (jobId: string) => Promise<{ success: boolean; output?: string; error?: string }>;
+  toggleCronJob: (jobId: string, enabled: boolean) => Promise<{ success: boolean }>;
 }
 
 declare global {

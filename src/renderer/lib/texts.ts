@@ -77,6 +77,7 @@ export const TEXTS = {
     tools: 'Tools',
     channels: 'Channels',
     gateway: 'Gateway',
+    cron: 'Scheduled Tasks',
     about: 'About',
 
     // Models section

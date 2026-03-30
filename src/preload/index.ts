@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -64,7 +64,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   oauthStart: (provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> =>
     debugInvoke('oauth:start', provider),
   oauthGetStatus: (provider: string): Promise<{ authenticated: boolean; email?: string; expires?: number }> =>
-    debugInvoke('oauth:getStatus', provider)
+    debugInvoke('oauth:getStatus', provider),
+
+  // Cron API
+  getCronJobs: (): Promise<{ jobs: CronJob[] }> => debugInvoke('cron:getJobs'),
+  getCronLogs: (jobId?: string): Promise<{ logs: CronLog[] }> => debugInvoke('cron:getLogs', jobId),
+  runCronJob: (jobId: string): Promise<{ success: boolean; output?: string; error?: string }> => debugInvoke('cron:run', jobId),
+  toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => debugInvoke('cron:toggle', { jobId, enabled })
 });
 
 // Type declarations for TypeScript

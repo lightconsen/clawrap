@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ModelConfig } from '@shared/types';
@@ -12,12 +12,15 @@ export function SettingsView() {
   const { skills, setSkills } = useSkills();
   const { tools, setTools } = useTools();
   const { channels, setChannels } = useChannels();
+  const { cronJobs, cronLogs, refreshCronJobs, refreshCronLogs, runJob, toggleJob } = useCron();
 
   const config = state.config;
 
   const [activeSection, setActiveSection] = useState('models');
   const [showAddModelModal, setShowAddModelModal] = useState(false);
   const [editingModel, setEditingModel] = useState<string | null>(null);
+  const [selectedJobForLogs, setSelectedJobForLogs] = useState<string | null>(null);
+  const [runningJobId, setRunningJobId] = useState<string | null>(null);
 
   const AVAILABLE_SKILLS = [
     { id: 'everything-claude-code:plan', name: 'Plan' },
@@ -236,6 +239,128 @@ export function SettingsView() {
     </div>
   );
 
+  const renderCronSection = () => {
+    const handleRunJob = async (jobId: string) => {
+      setRunningJobId(jobId);
+      try {
+        await runJob(jobId);
+        await refreshCronJobs();
+        await refreshCronLogs(jobId);
+      } catch (error) {
+        console.error('Failed to run job:', error);
+      } finally {
+        setRunningJobId(null);
+      }
+    };
+
+    const handleViewLogs = (jobId: string) => {
+      setSelectedJobForLogs(jobId === selectedJobForLogs ? null : jobId);
+      refreshCronLogs(jobId);
+    };
+
+    return (
+      <div className="cron-section">
+        <div className="section-header">
+          <h2>Scheduled Tasks (Cron)</h2>
+          <p className="subtitle">Manage and monitor scheduled cron jobs</p>
+        </div>
+
+        {cronJobs.length === 0 ? (
+          <p className="help-text">No cron jobs configured. Add jobs in your OpenClaw config.yaml file.</p>
+        ) : (
+          <div className="cron-jobs-list">
+            {cronJobs.map(job => (
+              <div key={job.id} className="cron-job-card">
+                <div className="cron-job-header">
+                  <div className="cron-job-name">{job.name}</div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={job.enabled}
+                      onChange={() => toggleJob(job.id, !job.enabled)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <div className="cron-job-details">
+                  <div className="cron-row">
+                    <span className="cron-label">Schedule:</span>
+                    <code className="cron-schedule">{job.schedule}</code>
+                  </div>
+                  <div className="cron-row">
+                    <span className="cron-label">Command:</span>
+                    <code className="cron-command">{job.command}</code>
+                  </div>
+                  <div className="cron-row">
+                    <span className="cron-label">Last Run:</span>
+                    <span>{job.lastRun ? new Date(job.lastRun).toLocaleString() : 'Never'}</span>
+                  </div>
+                  {job.nextRun && (
+                    <div className="cron-row">
+                      <span className="cron-label">Next Run:</span>
+                      <span>{new Date(job.nextRun).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {job.lastOutput && (
+                  <div className="cron-job-output">
+                    <div className="cron-row">
+                      <span className="cron-label">Last Output:</span>
+                    </div>
+                    <pre className="cron-output">{job.lastOutput}</pre>
+                  </div>
+                )}
+
+                <div className="cron-job-actions">
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => handleRunJob(job.id)}
+                    disabled={!job.enabled || runningJobId === job.id}
+                  >
+                    {runningJobId === job.id ? 'Running...' : 'Run Now'}
+                  </button>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => handleViewLogs(job.id)}
+                  >
+                    {selectedJobForLogs === job.id ? 'Hide Logs' : 'View Logs'}
+                  </button>
+                </div>
+
+                {selectedJobForLogs === job.id && (
+                  <div className="cron-job-logs">
+                    <h4>Recent Logs</h4>
+                    {cronLogs.filter(log => log.jobId === job.id).length === 0 ? (
+                      <p className="help-text">No logs available</p>
+                    ) : (
+                      <div className="cron-logs-list">
+                        {cronLogs.filter(log => log.jobId === job.id).map((log, idx) => (
+                          <div key={idx} className="cron-log-entry">
+                            <div className="log-header">
+                              <span className="log-time">{new Date(log.timestamp).toLocaleString()}</span>
+                              <span className={`log-status ${log.exitCode === 0 ? 'success' : 'error'}`}>
+                                {log.exitCode === 0 ? 'Success' : `Failed (code: ${log.exitCode})`}
+                              </span>
+                              <span className="log-duration">{(log.duration / 1000).toFixed(2)}s</span>
+                            </div>
+                            {log.output && <pre className="log-output">{log.output}</pre>}
+                            {log.error && <pre className="log-error">{log.error}</pre>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="settings-view">
       <div className="settings-container">
@@ -249,7 +374,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['models', 'skills', 'tools', 'channels', 'gateway', 'about'] as const).map(section => (
+            {(['models', 'skills', 'tools', 'channels', 'gateway', 'cron', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -267,6 +392,7 @@ export function SettingsView() {
           {activeSection === 'tools' && renderToolsSection()}
           {activeSection === 'channels' && renderChannelsSection()}
           {activeSection === 'gateway' && renderGatewaySection()}
+          {activeSection === 'cron' && renderCronSection()}
           {activeSection === 'about' && (
             <div className="about-section">
               <div className="section-header">

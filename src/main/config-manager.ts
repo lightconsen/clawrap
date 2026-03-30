@@ -488,6 +488,13 @@ export class ConfigManager {
     await fs.writeFile(this.configPath, content, 'utf-8');
   }
 
+  // Public method for external updates (e.g., cron jobs)
+  public async updateConfig(updater: (config: OpenClawConfig) => OpenClawConfig): Promise<void> {
+    if (!this.config) return;
+    this.config = updater(this.config);
+    await this.saveConfig();
+  }
+
   private getConfigDirectory(): string {
     const platform = process.platform;
     const homeDir = app.getPath('home');

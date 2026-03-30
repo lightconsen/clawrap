@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -15,6 +15,8 @@ interface AppState {
   isLoading: boolean;
   error: string | null;
   initialViewLoaded: boolean;
+  cronJobs: CronJob[];
+  cronLogs: CronLog[];
 }
 
 type Action =
@@ -28,7 +30,9 @@ type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_INITIAL_VIEW_LOADED'; payload: boolean }
-  | { type: 'UPDATE_MODEL'; payload: { slot: 'primary' | 'fallback' | 'image'; model: ModelConfig | null } };
+  | { type: 'UPDATE_MODEL'; payload: { slot: 'primary' | 'fallback' | 'image'; model: ModelConfig | null } }
+  | { type: 'SET_CRON_JOBS'; payload: CronJob[] }
+  | { type: 'SET_CRON_LOGS'; payload: CronLog[] };
 
 const initialState: AppState = {
   view: 'install',
@@ -41,6 +45,8 @@ const initialState: AppState = {
   isLoading: true,
   error: null,
   initialViewLoaded: false,
+  cronJobs: [],
+  cronLogs: [],
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -77,6 +83,10 @@ function appReducer(state: AppState, action: Action): AppState {
           },
         },
       };
+    case 'SET_CRON_JOBS':
+      return { ...state, cronJobs: action.payload };
+    case 'SET_CRON_LOGS':
+      return { ...state, cronLogs: action.payload };
     default:
       return state;
   }
@@ -286,5 +296,40 @@ export function useChannels() {
   return {
     channels: state.channels,
     setChannels,
+  };
+}
+
+export function useCron() {
+  const { state, dispatch } = useApp();
+
+  const refreshCronJobs = useCallback(async () => {
+    const result = await ipc.getCronJobs();
+    dispatch({ type: 'SET_CRON_JOBS', payload: result.jobs });
+  }, [dispatch]);
+
+  const refreshCronLogs = useCallback(async (jobId?: string) => {
+    const result = await ipc.getCronLogs(jobId);
+    dispatch({ type: 'SET_CRON_LOGS', payload: result.logs });
+  }, [dispatch]);
+
+  const runJob = useCallback(async (jobId: string) => {
+    return await ipc.runCronJob(jobId);
+  }, []);
+
+  const toggleJob = useCallback(async (jobId: string, enabled: boolean) => {
+    const result = await ipc.toggleCronJob(jobId, enabled);
+    if (result.success) {
+      await refreshCronJobs();
+    }
+    return result;
+  }, [dispatch, refreshCronJobs]);
+
+  return {
+    cronJobs: state.cronJobs,
+    cronLogs: state.cronLogs,
+    refreshCronJobs,
+    refreshCronLogs,
+    runJob,
+    toggleJob,
   };
 }
