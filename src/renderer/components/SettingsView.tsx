@@ -719,7 +719,7 @@ export function SettingsView() {
                   ))}
                 </div>
 
-                {agentInfo && otherAgents.find(a => a.id === selectedAgentId) && (
+                {agentInfo && agentInfo.id === selectedAgentId && (
                   <div className="agent-details" style={{ marginTop: '16px' }}>
                     <div className="agent-grid">
                       {/* Agent Info Card */}
