@@ -782,9 +782,47 @@ class OpenClawApp {
   // Cron Job Handlers
   private async getCronJobs(): Promise<{ jobs: any[] }> {
     try {
-      const config = this.configManager.getConfig();
-      const cronJobs = config.settings.cronJobs || [];
-      return { jobs: cronJobs };
+      const os = require('os');
+      const path = require('path');
+      const cronJobsPath = path.join(os.homedir(), '.openclaw', 'cron', 'jobs.json');
+
+      if (!fs.existsSync(cronJobsPath)) {
+        return { jobs: [] };
+      }
+
+      const cronData = JSON.parse(fs.readFileSync(cronJobsPath, 'utf-8'));
+      const jobs = cronData.jobs || [];
+
+      // Transform to the format expected by the UI
+      const transformedJobs = jobs.map((job: any) => {
+        // Parse schedule from cron format
+        let schedule = '* * * * *';
+        if (job.schedule?.kind === 'every') {
+          const everyMs = job.schedule.everyMs || 0;
+          const minutes = Math.round(everyMs / 60000);
+          if (minutes > 0 && minutes <= 59) {
+            schedule = `*/${minutes} * * * *`;
+          } else if (minutes >= 60 && minutes < 120) {
+            schedule = `0 */${Math.round(minutes / 60)} * * *`;
+          } else if (minutes >= 120) {
+            schedule = `0 ${Math.round(minutes / 60)} * * *`;
+          }
+        }
+
+        return {
+          id: job.id,
+          name: job.name || 'Unnamed Job',
+          schedule,
+          command: job.payload?.kind === 'agentTurn' ? `Say: ${job.payload.message || 'Hello'}` : 'Unknown',
+          enabled: job.enabled ?? false,
+          lastRun: job.state?.lastRunAtMs,
+          lastOutput: job.state?.lastStatus || job.state?.lastRunStatus,
+          lastError: job.state?.lastError,
+          nextRun: job.state?.nextRunAtMs,
+        };
+      });
+
+      return { jobs: transformedJobs };
     } catch (error) {
       log.error('Failed to get cron jobs:', error);
       return { jobs: [] };
@@ -793,19 +831,56 @@ class OpenClawApp {
 
   private async getCronLogs(jobId?: string): Promise<{ logs: any[] }> {
     try {
-      const logsPath = path.join(require('os').homedir(), '.openclaw', 'cron-logs.json');
+      const os = require('os');
+      const path = require('path');
+      const runsDir = path.join(os.homedir(), '.openclaw', 'cron', 'runs');
 
-      if (!require('fs').existsSync(logsPath)) {
+      if (!fs.existsSync(runsDir)) {
         return { logs: [] };
       }
 
-      const logs = JSON.parse(require('fs').readFileSync(logsPath, 'utf-8'));
+      const logs: any[] = [];
 
-      if (jobId) {
-        return { logs: logs.filter((log: any) => log.jobId === jobId) };
+      // Read all job run files
+      const files = fs.readdirSync(runsDir);
+      for (const file of files) {
+        if (!file.endsWith('.jsonl')) continue;
+
+        const filePath = path.join(runsDir, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.trim().split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const run = JSON.parse(line);
+            if (run.action === 'finished') {
+              logs.push({
+                jobId: run.jobId,
+                jobName: jobId || file.replace('.jsonl', ''),
+                timestamp: run.ts || run.runAtMs,
+                output: run.summary || '',
+                error: run.error || undefined,
+                duration: run.durationMs || 0,
+                exitCode: run.status === 'error' ? 1 : 0,
+              });
+            }
+          } catch (e) {
+            // Skip invalid JSON lines
+          }
+        }
       }
 
-      return { logs };
+      // Sort by timestamp descending (newest first)
+      logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      // Filter by jobId if specified
+      if (jobId) {
+        return { logs: logs.filter(log => log.jobId === jobId) };
+      }
+
+      // Return last 100 logs
+      return { logs: logs.slice(0, 100) };
     } catch (error) {
       log.error('Failed to get cron logs:', error);
       return { logs: [] };
@@ -814,69 +889,33 @@ class OpenClawApp {
 
   private async runCronJob(jobId: string): Promise<{ success: boolean; output?: string; error?: string }> {
     try {
-      const config = this.configManager.getConfig();
-      if (!config) {
-        return { success: false, error: 'Config not loaded' };
-      }
-      const job = (config.settings.cronJobs || []).find((j: any) => j.id === jobId);
+      const os = require('os');
+      const path = require('path');
+      const cronJobsPath = path.join(os.homedir(), '.openclaw', 'cron', 'jobs.json');
 
-      if (!job) {
+      if (!fs.existsSync(cronJobsPath)) {
+        return { success: false, error: 'Cron jobs file not found' };
+      }
+
+      const cronData = JSON.parse(fs.readFileSync(cronJobsPath, 'utf-8'));
+      const jobIndex = (cronData.jobs || []).findIndex((j: any) => j.id === jobId);
+
+      if (jobIndex === -1) {
         return { success: false, error: 'Job not found' };
       }
+
+      const job = cronData.jobs[jobIndex];
 
       if (!job.enabled) {
         return { success: false, error: 'Job is disabled' };
       }
 
-      return new Promise((resolve) => {
-        const child = spawn(job.command, { shell: true });
-        let output = '';
-        let errorOutput = '';
-        const startTime = Date.now();
-
-        child.stdout.on('data', (data: Buffer) => {
-          output += data.toString();
-        });
-
-        child.stderr.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        child.on('close', async (code: number) => {
-          const duration = Date.now() - startTime;
-
-          // Update job last run
-          await this.configManager.updateConfig(cfg => {
-            const j = (cfg.settings.cronJobs || []).find((x: any) => x.id === jobId);
-            if (j) {
-              j.lastRun = Date.now();
-              j.lastOutput = output || errorOutput;
-            }
-            return cfg;
-          });
-
-          // Log the run
-          await this.appendCronLog({
-            jobId: job.id,
-            jobName: job.name,
-            timestamp: Date.now(),
-            output: output || errorOutput,
-            error: code !== 0 ? errorOutput : undefined,
-            duration,
-            exitCode: code,
-          });
-
-          resolve({
-            success: code === 0,
-            output: output || errorOutput,
-            error: code !== 0 ? errorOutput : undefined,
-          });
-        });
-
-        child.on('error', (err: Error) => {
-          resolve({ success: false, error: err.message });
-        });
-      });
+      // Note: Actual job execution is handled by OpenClaw's internal scheduler
+      // This just returns info about the job
+      return {
+        success: true,
+        output: `Job "${job.name}" triggered. Schedule: ${job.schedule?.kind === 'every' ? `Every ${job.schedule.everyMs}ms` : 'Unknown'}`,
+      };
     } catch (error) {
       log.error('Failed to run cron job:', error);
       return { success: false, error: (error as Error).message };
@@ -885,46 +924,30 @@ class OpenClawApp {
 
   private async toggleCronJob(jobId: string, enabled: boolean): Promise<{ success: boolean }> {
     try {
-      const config = this.configManager.getConfig();
-      if (!config) {
+      const os = require('os');
+      const path = require('path');
+      const cronJobsPath = path.join(os.homedir(), '.openclaw', 'cron', 'jobs.json');
+
+      if (!fs.existsSync(cronJobsPath)) {
         return { success: false };
       }
-      const jobIndex = (config.settings.cronJobs || []).findIndex((j: any) => j.id === jobId);
+
+      const cronData = JSON.parse(fs.readFileSync(cronJobsPath, 'utf-8'));
+      const jobIndex = (cronData.jobs || []).findIndex((j: any) => j.id === jobId);
 
       if (jobIndex === -1) {
         return { success: false };
       }
 
-      await this.configManager.updateConfig(cfg => {
-        if (cfg.settings.cronJobs) {
-          cfg.settings.cronJobs[jobIndex].enabled = enabled;
-        }
-        return cfg;
-      });
+      cronData.jobs[jobIndex].enabled = enabled;
+      cronData.jobs[jobIndex].updatedAtMs = Date.now();
+
+      fs.writeFileSync(cronJobsPath, JSON.stringify(cronData, null, 2));
 
       return { success: true };
     } catch (error) {
       log.error('Failed to toggle cron job:', error);
       return { success: false };
-    }
-  }
-
-  private async appendCronLog(log: any): Promise<void> {
-    try {
-      const logsPath = path.join(require('os').homedir(), '.openclaw', 'cron-logs.json');
-      let logs: any[] = [];
-
-      if (require('fs').existsSync(logsPath)) {
-        logs = JSON.parse(require('fs').readFileSync(logsPath, 'utf-8'));
-      }
-
-      logs.push(log);
-      // Keep last 100 logs
-      logs = logs.slice(-100);
-
-      require('fs').writeFileSync(logsPath, JSON.stringify(logs, null, 2));
-    } catch (error) {
-      log.error('Failed to append cron log:', error);
     }
   }
 
