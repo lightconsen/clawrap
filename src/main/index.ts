@@ -308,6 +308,10 @@ class OpenClawApp {
     ipcMain.handle('personality:getFiles', async () => {
       return this.getPersonalityFiles();
     });
+
+    ipcMain.handle('personality:saveFile', async (_event, { name, content }: { name: string; content: string }) => {
+      return this.savePersonalityFile(name, content);
+    });
   }
 
   private async handleOAuthStart(provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> {
@@ -1117,6 +1121,33 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to get personality files:', error);
       return { files: [] };
+    }
+  }
+
+  private async savePersonalityFile(name: string, content: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const workspacePath = path.join(os.homedir(), '.openclaw', 'workspace');
+
+      if (!fs.existsSync(workspacePath)) {
+        return { success: false, error: 'Workspace directory not found' };
+      }
+
+      const fileName = `${name}.md`;
+      const filePath = path.join(workspacePath, fileName);
+
+      // Verify file exists before allowing save
+      if (!fs.existsSync(filePath)) {
+        return { success: false, error: `File ${fileName} not found` };
+      }
+
+      fs.writeFileSync(filePath, content, 'utf-8');
+      log.info(`Saved personality file: ${fileName}`);
+      return { success: true };
+    } catch (error) {
+      log.error('Failed to save personality file:', error);
+      return { success: false, error: (error as Error).message };
     }
   }
 

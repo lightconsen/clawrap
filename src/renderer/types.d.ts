@@ -64,6 +64,7 @@ export interface ElectronAPI {
 
   // Personality API
   getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;
+  savePersonalityFile: (name: string, content: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

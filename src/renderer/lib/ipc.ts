@@ -60,4 +60,5 @@ export const ipc = {
 
   // Personality
   getPersonalityFiles: (): Promise<{ files: PersonalityFile[] }> => window.electronAPI.getPersonalityFiles(),
+  savePersonalityFile: (name: string, content: string): Promise<{ success: boolean; error?: string }> => window.electronAPI.savePersonalityFile(name, content),
 };

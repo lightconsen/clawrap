@@ -27,6 +27,10 @@ export function SettingsView() {
   const [personalityFiles, setPersonalityFiles] = useState<PersonalityFile[]>([]);
   const [activePersonalityTab, setActivePersonalityTab] = useState<string>('SOUL');
   const [loadingPersonality, setLoadingPersonality] = useState(false);
+  const [editingPersonality, setEditingPersonality] = useState(false);
+  const [editedContent, setEditedContent] = useState<string>('');
+  const [savingPersonality, setSavingPersonality] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ success?: boolean; message?: string } | null>(null);
 
   // Poll memory info when on memory section
   React.useEffect(() => {
@@ -68,6 +72,36 @@ export function SettingsView() {
       });
     }
   }, [activeSection]);
+
+  // Update edited content when active tab changes
+  React.useEffect(() => {
+    const activeFile = personalityFiles.find(f => f.name === activePersonalityTab);
+    if (activeFile) {
+      setEditedContent(activeFile.content);
+    }
+  }, [activePersonalityTab, personalityFiles]);
+
+  const handleSavePersonalityFile = async () => {
+    setSavingPersonality(true);
+    setSaveStatus(null);
+    try {
+      const result = await ipc.savePersonalityFile(activePersonalityTab, editedContent);
+      if (result.success) {
+        setSaveStatus({ success: true, message: 'Saved!' });
+        setEditingPersonality(false);
+        // Refresh the files list
+        const { files } = await ipc.getPersonalityFiles();
+        setPersonalityFiles(files);
+      } else {
+        setSaveStatus({ success: false, message: result.error || 'Failed to save' });
+      }
+    } catch (error) {
+      setSaveStatus({ success: false, message: 'Failed to save' });
+    } finally {
+      setSavingPersonality(false);
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
 
   const AVAILABLE_SKILLS = [
     { id: 'everything-claude-code:plan', name: 'Plan' },
@@ -769,23 +803,73 @@ export function SettingsView() {
             <p className="help-text">No personality files found</p>
           ) : (
             <div className="personality-tabs">
-              <div className="personality-tab-list">
-                {personalityFiles.map(file => (
-                  <button
-                    key={file.name}
-                    className={`personality-tab ${activePersonalityTab === file.name ? 'active' : ''}`}
-                    onClick={() => setActivePersonalityTab(file.name)}
-                  >
-                    {file.name}
-                  </button>
-                ))}
-              </div>
-              <div className="personality-content">
-                {personalityFiles
-                  .filter(f => f.name === activePersonalityTab)
-                  .map(file => (
-                    <pre key={file.name} className="personality-file-content">{file.content}</pre>
+              <div className="personality-tab-header">
+                <div className="personality-tab-list">
+                  {personalityFiles.map(file => (
+                    <button
+                      key={file.name}
+                      className={`personality-tab ${activePersonalityTab === file.name ? 'active' : ''}`}
+                      onClick={() => {
+                        setActivePersonalityTab(file.name);
+                        setEditingPersonality(false);
+                      }}
+                      disabled={editingPersonality}
+                    >
+                      {file.name}
+                    </button>
                   ))}
+                </div>
+                <div className="personality-actions">
+                  {editingPersonality ? (
+                    <>
+                      <button
+                        className="btn btn-sm"
+                        onClick={handleSavePersonalityFile}
+                        disabled={savingPersonality}
+                      >
+                        {savingPersonality ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          setEditingPersonality(false);
+                          const activeFile = personalityFiles.find(f => f.name === activePersonalityTab);
+                          if (activeFile) setEditedContent(activeFile.content);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => setEditingPersonality(true)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+              {saveStatus && (
+                <div className={`save-status ${saveStatus.success ? 'success' : 'error'}`}>
+                  {saveStatus.message}
+                </div>
+              )}
+              <div className="personality-content">
+                {editingPersonality ? (
+                  <textarea
+                    className="personality-editor"
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    spellCheck={false}
+                  />
+                ) : (
+                  personalityFiles
+                    .filter(f => f.name === activePersonalityTab)
+                    .map(file => (
+                      <pre key={file.name} className="personality-file-content">{file.content}</pre>
+                    ))
+                )}
               </div>
             </div>
           )}

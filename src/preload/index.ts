@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Personality API
   getPersonalityFiles: (): Promise<{ files: PersonalityFile[] }> => debugInvoke('personality:getFiles'),
+  savePersonalityFile: (name: string, content: string): Promise<{ success: boolean; error?: string }> => debugInvoke('personality:saveFile', name, content),
 });
 
 // Type declarations for TypeScript
@@ -125,6 +126,7 @@ declare global {
       getAuthProfiles: () => Promise<AgentAuthProfile[]>;
       // Personality API
       getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;
+      savePersonalityFile: (name: string, content: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }

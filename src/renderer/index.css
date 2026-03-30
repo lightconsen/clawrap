@@ -1405,13 +1405,20 @@ body {
   margin-top: 20px;
 }
 
+.personality-tab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
 .personality-tab-list {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
 }
 
 .personality-tab {
@@ -1426,7 +1433,7 @@ body {
   transition: all 0.2s;
 }
 
-.personality-tab:hover {
+.personality-tab:hover:not(:disabled) {
   background: var(--bg-card);
   color: var(--text-primary);
 }
@@ -1435,6 +1442,34 @@ body {
   background: var(--bg-card);
   color: var(--text-primary);
   border-bottom-color: var(--bg-card);
+}
+
+.personality-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.personality-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.save-status {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.save-status.success {
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--success);
+}
+
+.save-status.error {
+  background: rgba(243, 139, 168, 0.2);
+  color: var(--error);
 }
 
 .personality-content {
@@ -1455,4 +1490,23 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
+}
+
+.personality-editor {
+  width: 100%;
+  min-height: 400px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  color: var(--text-primary);
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.personality-editor:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
