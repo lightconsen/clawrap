@@ -1,5 +1,7 @@
 # Installation Guide
 
+**Language / 语言**: [English](#installation-guide) | [中文](docs/install.cn.md)
+
 This guide covers installation for both end users and developers.
 
 ## For End Users

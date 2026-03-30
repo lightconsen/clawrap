@@ -1,5 +1,7 @@
 # 故障排除
 
+**语言 / Language**: [English](troubleshooting.md) | [中文](#故障排除)
+
 常见问题及解决方案。
 
 ## 安装问题
