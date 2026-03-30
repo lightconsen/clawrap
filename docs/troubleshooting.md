@@ -1,7 +1,5 @@
 # Troubleshooting
 
-**Language / 语言**: [English](#troubleshooting) | [中文](troubleshooting.cn.md)
-
 Common issues and solutions.
 
 ## Installation Issues
