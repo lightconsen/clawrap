@@ -53,9 +53,10 @@ export function SettingsView() {
           if (selectedAgentId !== targetAgentId) {
             setSelectedAgentId(targetAgentId);
           }
+          // Always load main agent info when opening section
+          refreshAgentInfo('main');
         }
       });
-      refreshAgentInfo(selectedAgentId);
     }
   }, [activeSection, selectedAgentId, refreshAgentList, refreshAgentInfo]);
 
@@ -590,6 +591,12 @@ export function SettingsView() {
       return `${days} day${days !== 1 ? 's' : ''} remaining`;
     };
 
+    // Separate main agent from other agents
+    const mainAgentSummary = agentList.find(a => a.id === 'main');
+    const otherAgents = agentList.filter(a => a.id !== 'main');
+    const isMainAgentSelected = selectedAgentId === 'main' || selectedAgentId === undefined;
+    const mainAgentInfo = isMainAgentSelected ? agentInfo : null;
+
     return (
       <div className="agent-section">
         <div className="section-header">
@@ -597,111 +604,205 @@ export function SettingsView() {
           <p className="subtitle">View and manage your AI agent configurations</p>
         </div>
 
-        {/* Agent Tabs */}
         {agentList.length === 0 ? (
           <div className="loading-state">Loading agents...</div>
         ) : (
           <>
-            <div className="agent-tab-list">
-              {agentList.map(agent => (
-                <button
-                  key={agent.id}
-                  className={`agent-tab ${selectedAgentId === agent.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedAgentId(agent.id);
-                    refreshAgentInfo(agent.id);
-                  }}
-                >
-                  {agent.name}
-                  {agent.hasAuthProfiles && <span className="auth-indicator">🔐</span>}
-                </button>
-              ))}
-            </div>
+            {/* Main Agent - Always shown first */}
+            {mainAgentSummary && (
+              <div className="main-agent-section">
+                {mainAgentInfo && mainAgentInfo.id === 'main' ? (
+                  <div className="agent-details">
+                    <div className="agent-grid">
+                      {/* Agent Info Card */}
+                      <div className="agent-card">
+                        <h3>Main Agent Configuration</h3>
+                        <div className="agent-stat">
+                          <div className="stat-row">
+                            <span className="stat-label">Name:</span>
+                            <span className="stat-value">{mainAgentInfo.name}</span>
+                          </div>
+                          <div className="stat-row">
+                            <span className="stat-label">ID:</span>
+                            <span className="stat-value">{mainAgentInfo.id}</span>
+                          </div>
+                          {mainAgentInfo.model && (
+                            <div className="stat-row">
+                              <span className="stat-label">Model:</span>
+                              <span className="stat-value">{mainAgentInfo.model}</span>
+                            </div>
+                          )}
+                          <div className="stat-row">
+                            <span className="stat-label">Config Path:</span>
+                            <span className="stat-value stat-code">{mainAgentInfo.configPath}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-            {agentInfo && agentInfo.id === selectedAgentId ? (
-              <div className="agent-details">
-                <div className="agent-grid">
-                  {/* Agent Info Card */}
-                  <div className="agent-card">
-                    <h3>Agent Configuration</h3>
-                    <div className="agent-stat">
-                      <div className="stat-row">
-                        <span className="stat-label">Name:</span>
-                        <span className="stat-value">{agentInfo.name}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="stat-label">ID:</span>
-                        <span className="stat-value">{agentInfo.id}</span>
-                      </div>
-                      {agentInfo.model && (
-                        <div className="stat-row">
-                          <span className="stat-label">Model:</span>
-                          <span className="stat-value">{agentInfo.model}</span>
+                    {/* Auth Profiles Card */}
+                    <div className="agent-card full-width" style={{ marginTop: '16px' }}>
+                      <h3>Authentication Profiles</h3>
+                      {mainAgentInfo.authProfiles.length === 0 ? (
+                        <p className="help-text">No authentication profiles configured</p>
+                      ) : (
+                        <div className="auth-profiles-list">
+                          {mainAgentInfo.authProfiles.map((profile, idx) => (
+                            <div key={idx} className="auth-profile-card">
+                              <div className="auth-profile-header">
+                                <span className="auth-profile-name">{profile.profileId}</span>
+                                <span className={`badge ${profile.type === 'oauth' ? 'badge-primary' : 'badge-secondary'}`}>
+                                  {profile.type === 'oauth' ? 'OAuth' : 'API Key'}
+                                </span>
+                              </div>
+                              <div className="auth-profile-details">
+                                {profile.provider && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Provider:</span>
+                                    <span className="stat-value">{profile.provider}</span>
+                                  </div>
+                                )}
+                                {profile.email && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Email:</span>
+                                    <span className="stat-value">{profile.email}</span>
+                                  </div>
+                                )}
+                                <div className="stat-row">
+                                  <span className="stat-label">Status:</span>
+                                  <span className={`stat-value ${profile.expires && profile.expires < Date.now() ? 'error' : 'success'}`}>
+                                    {profile.expires && profile.expires < Date.now() ? 'Expired' : 'Active'}
+                                  </span>
+                                </div>
+                                {profile.expires && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Expires:</span>
+                                    <span className="stat-value">{formatExpiry(profile.expires)}</span>
+                                  </div>
+                                )}
+                                {profile.created && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Created:</span>
+                                    <span className="stat-value">{formatTime(profile.created)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
-                      <div className="stat-row">
-                        <span className="stat-label">Config Path:</span>
-                        <span className="stat-value stat-code">{agentInfo.configPath}</span>
-                      </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="loading-state">Loading main agent details...</div>
+                )}
+              </div>
+            )}
+
+            {/* Other Agents - Shown as tabs below */}
+            {otherAgents.length > 0 && (
+              <div className="other-agents-section">
+                <h3 style={{ marginBottom: '12px', fontSize: '15px', color: 'var(--text-secondary)' }}>Other Agents</h3>
+                <div className="agent-tab-list">
+                  {otherAgents.map(agent => (
+                    <button
+                      key={agent.id}
+                      className={`agent-tab ${selectedAgentId === agent.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedAgentId(agent.id);
+                        refreshAgentInfo(agent.id);
+                      }}
+                    >
+                      {agent.name}
+                      {agent.hasAuthProfiles && <span className="auth-indicator">🔐</span>}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Auth Profiles Card */}
-                <div className="agent-card full-width" style={{ marginTop: '16px' }}>
-                  <h3>Authentication Profiles</h3>
-                  {agentInfo.authProfiles.length === 0 ? (
-                    <p className="help-text">No authentication profiles configured</p>
-                  ) : (
-                    <div className="auth-profiles-list">
-                      {agentInfo.authProfiles.map((profile, idx) => (
-                        <div key={idx} className="auth-profile-card">
-                          <div className="auth-profile-header">
-                            <span className="auth-profile-name">{profile.profileId}</span>
-                            <span className={`badge ${profile.type === 'oauth' ? 'badge-primary' : 'badge-secondary'}`}>
-                              {profile.type === 'oauth' ? 'OAuth' : 'API Key'}
-                            </span>
+                {agentInfo && otherAgents.find(a => a.id === selectedAgentId) && (
+                  <div className="agent-details" style={{ marginTop: '16px' }}>
+                    <div className="agent-grid">
+                      {/* Agent Info Card */}
+                      <div className="agent-card">
+                        <h3>Agent Configuration</h3>
+                        <div className="agent-stat">
+                          <div className="stat-row">
+                            <span className="stat-label">Name:</span>
+                            <span className="stat-value">{agentInfo.name}</span>
                           </div>
-                          <div className="auth-profile-details">
-                            {profile.provider && (
-                              <div className="stat-row">
-                                <span className="stat-label">Provider:</span>
-                                <span className="stat-value">{profile.provider}</span>
-                              </div>
-                            )}
-                            {profile.email && (
-                              <div className="stat-row">
-                                <span className="stat-label">Email:</span>
-                                <span className="stat-value">{profile.email}</span>
-                              </div>
-                            )}
+                          <div className="stat-row">
+                            <span className="stat-label">ID:</span>
+                            <span className="stat-value">{agentInfo.id}</span>
+                          </div>
+                          {agentInfo.model && (
                             <div className="stat-row">
-                              <span className="stat-label">Status:</span>
-                              <span className={`stat-value ${profile.expires && profile.expires < Date.now() ? 'error' : 'success'}`}>
-                                {profile.expires && profile.expires < Date.now() ? 'Expired' : 'Active'}
-                              </span>
+                              <span className="stat-label">Model:</span>
+                              <span className="stat-value">{agentInfo.model}</span>
                             </div>
-                            {profile.expires && (
-                              <div className="stat-row">
-                                <span className="stat-label">Expires:</span>
-                                <span className="stat-value">{formatExpiry(profile.expires)}</span>
-                              </div>
-                            )}
-                            {profile.created && (
-                              <div className="stat-row">
-                                <span className="stat-label">Created:</span>
-                                <span className="stat-value">{formatTime(profile.created)}</span>
-                              </div>
-                            )}
+                          )}
+                          <div className="stat-row">
+                            <span className="stat-label">Config Path:</span>
+                            <span className="stat-value stat-code">{agentInfo.configPath}</span>
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Auth Profiles Card */}
+                    <div className="agent-card full-width" style={{ marginTop: '16px' }}>
+                      <h3>Authentication Profiles</h3>
+                      {agentInfo.authProfiles.length === 0 ? (
+                        <p className="help-text">No authentication profiles configured</p>
+                      ) : (
+                        <div className="auth-profiles-list">
+                          {agentInfo.authProfiles.map((profile, idx) => (
+                            <div key={idx} className="auth-profile-card">
+                              <div className="auth-profile-header">
+                                <span className="auth-profile-name">{profile.profileId}</span>
+                                <span className={`badge ${profile.type === 'oauth' ? 'badge-primary' : 'badge-secondary'}`}>
+                                  {profile.type === 'oauth' ? 'OAuth' : 'API Key'}
+                                </span>
+                              </div>
+                              <div className="auth-profile-details">
+                                {profile.provider && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Provider:</span>
+                                    <span className="stat-value">{profile.provider}</span>
+                                  </div>
+                                )}
+                                {profile.email && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Email:</span>
+                                    <span className="stat-value">{profile.email}</span>
+                                  </div>
+                                )}
+                                <div className="stat-row">
+                                  <span className="stat-label">Status:</span>
+                                  <span className={`stat-value ${profile.expires && profile.expires < Date.now() ? 'error' : 'success'}`}>
+                                    {profile.expires && profile.expires < Date.now() ? 'Expired' : 'Active'}
+                                  </span>
+                                </div>
+                                {profile.expires && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Expires:</span>
+                                    <span className="stat-value">{formatExpiry(profile.expires)}</span>
+                                  </div>
+                                )}
+                                {profile.created && (
+                                  <div className="stat-row">
+                                    <span className="stat-label">Created:</span>
+                                    <span className="stat-value">{formatTime(profile.created)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="loading-state">Loading agent details...</div>
             )}
           </>
         )}

@@ -1516,6 +1516,16 @@ body {
   margin-top: 20px;
 }
 
+.main-agent-section {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.other-agents-section {
+  margin-top: 24px;
+}
+
 .agent-tab-list {
   display: flex;
   gap: 8px;
