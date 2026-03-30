@@ -1,6 +1,9 @@
 <p align="center">
-  <img src="build/icon.png" alt="Clawrap Logo" width="120" height="120" style="float: left; margin-right: 20px;">
-  <h1 style="display: inline-block; vertical-align: middle;">Clawrap</h1>
+  <img src="build/icon.png" alt="Clawrap Logo" width="120" height="120">
+</p>
+
+<p align="center">
+  <h1 align="center">Clawrap - Easiest Installer for OpenClaw</h1>
 </p>
 
 <p align="center">
