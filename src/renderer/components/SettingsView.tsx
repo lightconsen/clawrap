@@ -42,6 +42,13 @@ export function SettingsView() {
     }
   }, [activeSection, refreshAgentInfo]);
 
+  // Load cron jobs when on crons section
+  React.useEffect(() => {
+    if (activeSection === 'crons') {
+      refreshCronJobs();
+    }
+  }, [activeSection, refreshCronJobs]);
+
   const AVAILABLE_SKILLS = [
     { id: 'everything-claude-code:plan', name: 'Plan' },
     { id: 'everything-claude-code:tdd', name: 'TDD' },
