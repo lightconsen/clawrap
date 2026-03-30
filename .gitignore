@@ -15,6 +15,7 @@ src/**/*.js.map
 src/**/*.d.ts
 src/**/*.d.ts.map
 !src/renderer/types.d.ts
+!src/renderer/assets.d.ts
 
 # Gateway binaries (large files)
 resources/gateway/*
