@@ -1,4 +1,3 @@
-/// <reference path="../assets.d.ts" />
 import React, { useState, useEffect } from 'react';
 import { useApp, useSetView } from '../store/appStore';
 import { ipc } from '../lib/ipc';
