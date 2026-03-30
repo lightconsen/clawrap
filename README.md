@@ -1,206 +1,83 @@
 # Clawrap
 
-An Electron wrapper for OpenClaw's web terminal with automatic installation, cross-platform installers, and simplified user onboarding.
+**The easiest way to get started with OpenClaw**
 
-## Features
+Clawrap is a desktop application that makes OpenClaw simple to install and use. No terminal, no configuration files, no hassle.
 
-- **Automatic OpenClaw Installation**: The app automatically installs OpenClaw via npm if not present
-- **Auto-Starting Gateway**: The gateway starts automatically when you open the app
-- **First-Run Setup**: Simple wizard to configure your AI model and API key
-- **Multi-Model Support**: Pre-configured with popular international and China models
-  - Claude (Anthropic)
-  - GPT-4o (OpenAI)
-  - Gemini (Google)
-  - DeepSeek
-  - Qwen (Alibaba)
-  - Hunyuan (Tencent)
-  - ERNIE (Baidu)
-  - Doubao (ByteDance)
-  - Custom models
+## Why Clawrap?
 
-## Prerequisites
+OpenClaw is powerful but requires command-line knowledge to set up. Clawrap changes that:
 
-- **Node.js 22+** (or Node 24 recommended) - OpenClaw requires Node.js to run
-- **npm** - Comes with Node.js
+| Without Clawrap | With Clawrap |
+|-----------------|--------------|
+| Install Node.js manually | Guided setup if needed |
+| Run `npm install -g openclaw` | One-click installation |
+| Edit YAML config files | Visual settings panel |
+| Start gateway via terminal | Auto-starts on launch |
+| Configure models manually | Pre-configured models ready to use |
 
-The Electron wrapper will check for OpenClaw installation and install it automatically if needed.
+## What You Get
 
-## Project Structure
+- **One-click OpenClaw installation** - The app installs everything for you
+- **Visual setup wizard** - Configure your AI model in minutes
+- **Auto-starting gateway** - No need to manage background processes
+- **Cross-platform** - Works on macOS, Windows, and Linux
+- **Multi-model support** - Claude, GPT-4o, Gemini, DeepSeek, Qwen, and more
 
-```
-clawrap/
-├── src/
-│   ├── main/              # Electron main process
-│   ├── preload/           # Preload scripts
-│   ├── renderer/          # UI (install, setup wizard, terminal)
-│   └── shared/            # Shared types
-├── resources/
-│   └── default-config.yaml
-├── package.json
-├── tsconfig.json
-└── electron-builder.json
-```
+## Installation
 
-## Development
+### Step 1: Download
 
-### Prerequisites
+Get the installer for your operating system from the [Releases page](https://github.com/lightconsen/clawrap/releases).
 
-- Node.js 18+
-- npm or yarn
+- **macOS**: Download the `.dmg` file
+- **Windows**: Download the `.exe` installer
+- **Linux**: Download the `.AppImage` or `.deb` file
 
-### Setup
+### Step 2: Install
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+- **macOS**: Open the DMG and drag Clawrap to Applications
+- **Windows**: Run the installer and follow the prompts
+- **Linux**: Make the AppImage executable and run it
 
-3. Run in development mode:
-   ```bash
-   npm run dev
-   ```
+### Step 3: First Run
 
-   On first run, the app will:
-   1. Check if OpenClaw is installed globally
-   2. Install OpenClaw if not found (`npm install -g openclaw@latest`)
-   3. Show the first-run setup wizard
-   4. Start the OpenClaw gateway
-   5. Open the terminal window
+When you open Clawrap for the first time:
 
-### Building
+1. **Wait for installation** - The app automatically installs OpenClaw (takes ~30 seconds)
+2. **Choose your AI model** - Select from popular models like Claude, GPT-4o, or Gemini
+3. **Enter your API key** - Get one from your model provider (links provided in the app)
+4. **Start chatting** - That's it! The terminal opens and you're ready to go
 
-Build for all platforms:
-```bash
-npm run build
-```
+## Supported AI Models
 
-Build for specific platforms:
-```bash
-npm run build:mac     # macOS (DMG + ZIP)
-npm run build:win     # Windows (NSIS installer + Portable)
-npm run build:linux   # Linux (AppImage + DEB + RPM)
-```
+Clawrap comes pre-configured with the most popular AI providers:
 
-Output will be in the `release/` directory.
+| Provider | Models | Get API Key |
+|----------|--------|-------------|
+| Anthropic | Claude | [anthropic.com](https://www.anthropic.com) |
+| OpenAI | GPT-4o, GPT-3.5 | [platform.openai.com](https://platform.openai.com) |
+| Google | Gemini | [makersuite.google.com](https://makersuite.google.com) |
+| DeepSeek | DeepSeek Coder | [platform.deepseek.com](https://platform.deepseek.com) |
+| Alibaba | Qwen | [dashscope.aliyun.com](https://dashscope.aliyun.com) |
+| Tencent | Hunyuan | [cloud.tencent.com](https://cloud.tencent.com) |
+| Baidu | ERNIE | [cloud.baidu.com](https://cloud.baidu.com) |
+| ByteDance | Doubao | [www.volcengine.com](https://www.volcengine.com) |
 
-## How It Works
+You can also add custom models if your provider isn't listed.
 
-### OpenClaw Installation
+## Need Help?
 
-Unlike typical Electron apps that bundle a binary, Clawrap:
+- **Installation guide**: See [docs/install.md](docs/install.md)
+- **Troubleshooting**: See [docs/troubleshooting.md](docs/troubleshooting.md)
+- **OpenClaw docs**: [docs.openclaw.ai](https://docs.openclaw.ai)
 
-1. **Checks** if `openclaw` is installed globally via npm
-2. **Installs** automatically using `npm install -g openclaw@latest` if not found
-3. **Runs** the gateway using `openclaw gateway --port 18789`
+## System Requirements
 
-This approach:
-- Keeps the Electron app small (~10MB instead of ~100MB)
-- Allows OpenClaw to be updated independently
-- Works with the existing OpenClaw distribution model
+- **Node.js 22 or higher** (the app will guide you through installation if needed)
+- **Operating System**: macOS 10.13+, Windows 10+, or any modern Linux distribution
+- **Internet connection**: Required for AI model access
 
-### Gateway Lifecycle
+---
 
-The Electron app manages the OpenClaw gateway:
-
-1. **Start**: Spawns `openclaw gateway` as a subprocess
-2. **Port**: Uses default port 18789
-3. **Health**: Monitors gateway status
-4. **Stop**: Gracefully shuts down on app quit
-
-## Configuration
-
-On first run, the app creates a configuration file:
-
-- **macOS**: `~/Library/Application Support/OpenClaw/config.yaml`
-- **Windows**: `%APPDATA%/OpenClaw/config.yaml`
-- **Linux**: `~/.config/OpenClaw/config.yaml`
-
-### Default Configuration
-
-The app comes with sensible defaults:
-- Pre-selected skills (plan, TDD, review tools)
-- Pre-selected tools (Read, Write, Edit, Bash, etc.)
-- Bypass channel settings
-- Empty model configuration (user must set up on first run)
-
-## Packaging & Distribution
-
-### macOS
-
-- **DMG**: Drag-and-drop installer
-- **ZIP**: For auto-updater
-- Supports both Intel (x64) and Apple Silicon (arm64)
-
-### Windows
-
-- **NSIS Installer**: Standard Windows installer
-- **Portable**: Single executable, no installation required
-
-### Linux
-
-- **AppImage**: Universal Linux package
-- **DEB**: For Debian/Ubuntu
-- **RPM**: For RHEL/Fedora
-
-## First-Run Flow
-
-When a user opens the app for the first time:
-
-1. **Check Installation**: App checks if OpenClaw is installed
-2. **Install** (if needed): Shows installation progress
-3. **Setup Wizard**: Model selection + API key configuration
-4. **Launch**: Gateway starts and terminal opens
-
-## Development Notes
-
-### Adding New Models
-
-Edit `src/shared/types.ts` to add new preset models:
-
-```typescript
-export const PRESET_MODELS: ModelConfig[] = [
-  // Add your model here
-  { id: "my-model", name: "My Model (Provider)", provider: "provider" },
-  // ...
-];
-```
-
-### Manual OpenClaw Installation
-
-If automatic installation fails, users can install manually:
-
-```bash
-npm install -g openclaw@latest
-```
-
-Then restart the Electron app.
-
-## Troubleshooting
-
-### Installation Issues
-
-If OpenClaw fails to install automatically:
-
-1. Ensure Node.js 22+ is installed: `node --version`
-2. Try manual installation: `npm install -g openclaw@latest`
-3. Check npm permissions (may need `sudo` on macOS/Linux)
-
-### Gateway Won't Start
-
-1. Check if port 18789 is available
-2. Run `openclaw doctor` in terminal to diagnose
-3. Check logs in the Electron app (View → Toggle Developer Tools)
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions welcome! Please follow the existing code style.
-
-## Resources
-
-- [OpenClaw Documentation](https://docs.openclaw.ai)
-- [OpenClaw GitHub](https://github.com/openclaw/openclaw)
+*For developers: See [docs/](docs/) for development setup, build instructions, and technical documentation.*
