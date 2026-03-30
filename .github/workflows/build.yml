@@ -17,6 +17,7 @@ jobs:
       version: ${{ steps.version-check.outputs.version }}
       prev_version: ${{ steps.version-check.outputs.prev_version }}
       is_major_minor_bump: ${{ steps.version-check.outputs.major_minor_bump }}
+      is_build_bump: ${{ steps.version-check.outputs.build_bump }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,14 +41,19 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "Version unchanged: $CURRENT_VERSION"
           else
-            # Simple version comparison (split by dots and compare)
-            CURRENT_MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
-            CURRENT_MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
-            CURRENT_PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+            # Parse version parts (MAJOR.MINOR.PATCH-BUILD)
+            CURRENT_BASE=$(echo $CURRENT_VERSION | cut -d'-' -f1)
+            CURRENT_BUILD=$(echo $CURRENT_VERSION | cut -d'-' -f2)
+            PREV_BASE=$(echo $PREV_VERSION | cut -d'-' -f1)
+            PREV_BUILD=$(echo $PREV_VERSION | cut -d'-' -f2)
 
-            PREV_MAJOR=$(echo $PREV_VERSION | cut -d. -f1)
-            PREV_MINOR=$(echo $PREV_VERSION | cut -d. -f2)
-            PREV_PATCH=$(echo $PREV_VERSION | cut -d. -f3)
+            CURRENT_MAJOR=$(echo $CURRENT_BASE | cut -d. -f1)
+            CURRENT_MINOR=$(echo $CURRENT_BASE | cut -d. -f2)
+            CURRENT_PATCH=$(echo $CURRENT_BASE | cut -d. -f3)
+
+            PREV_MAJOR=$(echo $PREV_BASE | cut -d. -f1)
+            PREV_MINOR=$(echo $PREV_BASE | cut -d. -f2)
+            PREV_PATCH=$(echo $PREV_BASE | cut -d. -f3)
 
             # Check if current > previous
             if [ "$CURRENT_MAJOR" -gt "$PREV_MAJOR" ] || \
@@ -67,6 +73,14 @@ jobs:
                 echo "major_minor_bump=false" >> $GITHUB_OUTPUT
                 echo "📝 Patch version bump detected: will NOT trigger build"
               fi
+            # Check if base version is same but build changed (e.g., 1.0.3 -> 1.0.3-build)
+            elif [ "$CURRENT_BASE" = "$PREV_BASE" ] && [ "$CURRENT_BUILD" != "$PREV_BUILD" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+              echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "build_bump=true" >> $GITHUB_OUTPUT
+              echo "🔨 Build version bump detected: $PREV_BUILD → $CURRENT_BUILD (will trigger build test)"
             else
               echo "changed=false" >> $GITHUB_OUTPUT
               echo "⚠️ Version decreased or invalid: $PREV_VERSION → $CURRENT_VERSION"
@@ -309,3 +323,107 @@ jobs:
             - `source-code.tar.gz` - Source code as TAR.GZ archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build test for build version bumps (e.g., 1.0.3-build)
+  build-test:
+    needs: check-version
+    if: needs.check-version.outputs.is_build_bump == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+            name: macOS
+            arch: universal
+          - os: windows-latest
+            target: win
+            name: Windows
+            arch: x64
+          - os: ubuntu-latest
+            target: linux
+            name: Linux
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      # Install dependencies WITHOUT running postinstall scripts
+      - name: Install dependencies (skip scripts)
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Manually download electron binary for this platform
+      - name: Download electron binary
+        shell: bash
+        run: |
+          ELECTRON_VERSION=41.0.4
+          ELECTRON_CACHE_DIR="$HOME/.cache/electron"
+          mkdir -p "$ELECTRON_CACHE_DIR"
+
+          if [[ "${{ matrix.target }}" == "mac" ]]; then
+            for arch in x64 arm64; do
+              FILENAME="electron-v${ELECTRON_VERSION}-darwin-${arch}.zip"
+              URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+              echo "Downloading ${FILENAME}..."
+              curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL" || echo "Failed to download ${FILENAME}"
+            done
+          elif [[ "${{ matrix.target }}" == "win" ]]; then
+            FILENAME="electron-v${ELECTRON_VERSION}-win32-x64.zip"
+            URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+            echo "Downloading ${FILENAME}..."
+            curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL"
+          elif [[ "${{ matrix.target }}" == "linux" ]]; then
+            FILENAME="electron-v${ELECTRON_VERSION}-linux-x64.zip"
+            URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/${FILENAME}"
+            echo "Downloading ${FILENAME}..."
+            curl -L --retry 3 --retry-delay 5 -o "$ELECTRON_CACHE_DIR/$FILENAME" "$URL"
+          fi
+
+      # Run electron postinstall manually
+      - name: Run electron postinstall
+        run: cd node_modules/electron && node install.js
+
+      # Run electron-builder install-app-deps
+      - name: Install app dependencies
+        run: npx electron-builder install-app-deps
+
+      - name: Build TypeScript
+        run: pnpm build:ts
+
+      - name: Build ${{ matrix.name }} (test build, no signing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Building ${{ matrix.name }} (test build without signing)..."
+          npx electron-builder --${{ matrix.target }} --publish never
+
+      - name: Upload test build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-${{ matrix.arch }}-build-test
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.msi
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+          if-no-files-found: warn
+          retention-days: 7
