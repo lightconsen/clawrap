@@ -1393,3 +1393,66 @@ body {
   transform: translateX(20px);
   background-color: white;
 }
+
+/* Personality Section */
+.personality-section {
+  margin-top: 40px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.personality-tabs {
+  margin-top: 20px;
+}
+
+.personality-tab-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.personality-tab {
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.personality-tab:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.personality-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-bottom-color: var(--bg-card);
+}
+
+.personality-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.personality-file-content {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}

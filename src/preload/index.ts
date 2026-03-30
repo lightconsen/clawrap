@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -78,6 +78,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Agent API
   getAgentInfo: (): Promise<AgentInfo> => debugInvoke('agent:getInfo'),
   getAuthProfiles: (): Promise<AgentAuthProfile[]> => debugInvoke('agent:getAuthProfiles'),
+
+  // Personality API
+  getPersonalityFiles: (): Promise<{ files: PersonalityFile[] }> => debugInvoke('personality:getFiles'),
 });
 
 // Type declarations for TypeScript
@@ -120,6 +123,8 @@ declare global {
       // Agent API
       getAgentInfo: () => Promise<AgentInfo>;
       getAuthProfiles: () => Promise<AgentAuthProfile[]>;
+      // Personality API
+      getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;
     };
   }
 }

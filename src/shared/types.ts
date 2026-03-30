@@ -384,3 +384,8 @@ export interface AgentInfo {
   authProfiles: AgentAuthProfile[];
   configPath: string;
 }
+
+export interface PersonalityFile {
+  name: string;
+  content: string;
+}

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
-import { ModelConfig } from '@shared/types';
+import { ModelConfig, PersonalityFile } from '@shared/types';
+import { ipc } from '../lib/ipc';
 
 export function SettingsView() {
   const setView = useSetView();
@@ -23,6 +24,9 @@ export function SettingsView() {
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [selectedJobForLogs, setSelectedJobForLogs] = useState<string | null>(null);
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
+  const [personalityFiles, setPersonalityFiles] = useState<PersonalityFile[]>([]);
+  const [activePersonalityTab, setActivePersonalityTab] = useState<string>('SOUL');
+  const [loadingPersonality, setLoadingPersonality] = useState(false);
 
   // Poll memory info when on memory section
   React.useEffect(() => {
@@ -48,6 +52,22 @@ export function SettingsView() {
       refreshCronJobs();
     }
   }, [activeSection, refreshCronJobs]);
+
+  // Load personality files when on memory section
+  React.useEffect(() => {
+    if (activeSection === 'memory') {
+      setLoadingPersonality(true);
+      ipc.getPersonalityFiles().then(({ files }) => {
+        setPersonalityFiles(files);
+        if (files.length > 0 && !files.find(f => f.name === activePersonalityTab)) {
+          setActivePersonalityTab(files[0].name);
+        }
+        setLoadingPersonality(false);
+      }).catch(() => {
+        setLoadingPersonality(false);
+      });
+    }
+  }, [activeSection]);
 
   const AVAILABLE_SKILLS = [
     { id: 'everything-claude-code:plan', name: 'Plan' },
@@ -735,6 +755,41 @@ export function SettingsView() {
         <button className="btn" onClick={refreshMemory} style={{ marginTop: '24px' }}>
           Refresh
         </button>
+
+        {/* Personality Files Tabs */}
+        <div className="personality-section" style={{ marginTop: '40px' }}>
+          <div className="section-header">
+            <h2>Personality</h2>
+            <p className="subtitle">Agent personality and behavior configuration</p>
+          </div>
+
+          {loadingPersonality ? (
+            <div className="loading-state">Loading personality files...</div>
+          ) : personalityFiles.length === 0 ? (
+            <p className="help-text">No personality files found</p>
+          ) : (
+            <div className="personality-tabs">
+              <div className="personality-tab-list">
+                {personalityFiles.map(file => (
+                  <button
+                    key={file.name}
+                    className={`personality-tab ${activePersonalityTab === file.name ? 'active' : ''}`}
+                    onClick={() => setActivePersonalityTab(file.name)}
+                  >
+                    {file.name}
+                  </button>
+                ))}
+              </div>
+              <div className="personality-content">
+                {personalityFiles
+                  .filter(f => f.name === activePersonalityTab)
+                  .map(file => (
+                    <pre key={file.name} className="personality-file-content">{file.content}</pre>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   };

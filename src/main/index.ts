@@ -303,6 +303,11 @@ class OpenClawApp {
     ipcMain.handle('agent:getAuthProfiles', async () => {
       return this.getAuthProfiles();
     });
+
+    // Personality Files IPC Handler
+    ipcMain.handle('personality:getFiles', async () => {
+      return this.getPersonalityFiles();
+    });
   }
 
   private async handleOAuthStart(provider: string): Promise<{ success: boolean; authUrl?: string; error?: string }> {
@@ -1076,6 +1081,42 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to get auth profiles:', error);
       return [];
+    }
+  }
+
+  private async getPersonalityFiles(): Promise<{ files: { name: string; content: string }[] }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const workspacePath = path.join(os.homedir(), '.openclaw', 'workspace');
+
+      if (!fs.existsSync(workspacePath)) {
+        return { files: [] };
+      }
+
+      const files: { name: string; content: string }[] = [];
+      const personalityFiles = [
+        'SOUL.md',
+        'IDENTITY.md',
+        'USER.md',
+        'AGENTS.md',
+        'TOOLS.md',
+        'BOOTSTRAP.md',
+        'HEARTBEAT.md',
+      ];
+
+      for (const fileName of personalityFiles) {
+        const filePath = path.join(workspacePath, fileName);
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          files.push({ name: fileName.replace('.md', ''), content });
+        }
+      }
+
+      return { files };
+    } catch (error) {
+      log.error('Failed to get personality files:', error);
+      return { files: [] };
     }
   }
 
