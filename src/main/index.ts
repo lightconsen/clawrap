@@ -253,6 +253,11 @@ class OpenClawApp {
       app.quit();
     });
 
+    // Memory IPC
+    ipcMain.handle('memory:getInfo', async () => {
+      return this.getMemoryInfo();
+    });
+
     // External links
     ipcMain.handle('shell:openExternal', (_event, url: string) => {
       shell.openExternal(url);
@@ -912,6 +917,39 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to append cron log:', error);
     }
+  }
+
+  private async getMemoryInfo(): Promise<{
+    systemMemory: { total: number; free: number; used: number; percent: number };
+    processMemory: { heapUsed: number; heapTotal: number; rss: number };
+    gatewayMemory?: { pid?: number; memory?: number };
+  }> {
+    const os = require('os');
+    const total = os.totalmem();
+    const free = os.freemem();
+    const used = total - free;
+
+    const processMem = process.memoryUsage();
+
+    const gatewayInfo = this.gatewayManager.getProcessInfo();
+
+    return {
+      systemMemory: {
+        total,
+        free,
+        used,
+        percent: (used / total) * 100,
+      },
+      processMemory: {
+        heapUsed: processMem.heapUsed,
+        heapTotal: processMem.heapTotal,
+        rss: processMem.rss,
+      },
+      gatewayMemory: gatewayInfo.pid ? {
+        pid: gatewayInfo.pid,
+        memory: gatewayInfo.memory,
+      } : undefined,
+    };
   }
 
   private handleWindowAllClosed(): void {

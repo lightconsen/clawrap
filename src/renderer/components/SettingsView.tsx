@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ModelConfig } from '@shared/types';
@@ -13,6 +13,7 @@ export function SettingsView() {
   const { tools, setTools } = useTools();
   const { channels, setChannels } = useChannels();
   const { cronJobs, cronLogs, refreshCronJobs, refreshCronLogs, runJob, toggleJob } = useCron();
+  const { memoryInfo, refreshMemory } = useMemory();
 
   const config = state.config;
 
@@ -21,6 +22,15 @@ export function SettingsView() {
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [selectedJobForLogs, setSelectedJobForLogs] = useState<string | null>(null);
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
+
+  // Poll memory info when on memory section
+  React.useEffect(() => {
+    if (activeSection === 'memory') {
+      refreshMemory();
+      const interval = setInterval(refreshMemory, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activeSection, refreshMemory]);
 
   const AVAILABLE_SKILLS = [
     { id: 'everything-claude-code:plan', name: 'Plan' },
@@ -357,6 +367,112 @@ export function SettingsView() {
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderMemorySection = () => {
+    const formatBytes = (bytes: number) => {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let value = bytes;
+      let unitIndex = 0;
+      while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex++;
+      }
+      return `${value.toFixed(1)} ${units[unitIndex]}`;
+    };
+
+    if (!memoryInfo) {
+      return (
+        <div className="memory-section">
+          <div className="section-header">
+            <h2>Memory Usage</h2>
+            <p className="subtitle">Monitor system and application memory</p>
+          </div>
+          <div className="loading-state">Loading memory information...</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="memory-section">
+        <div className="section-header">
+          <h2>Memory Usage</h2>
+          <p className="subtitle">Monitor system and application memory</p>
+        </div>
+
+        <div className="memory-grid">
+          {/* System Memory */}
+          <div className="memory-card">
+            <h3>System Memory</h3>
+            <div className="memory-stat">
+              <div className="memory-bar-container">
+                <div
+                  className="memory-bar"
+                  style={{ width: `${memoryInfo.systemMemory.percent}%` }}
+                ></div>
+              </div>
+              <div className="memory-stats-row">
+                <span className="memory-label">Used: {formatBytes(memoryInfo.systemMemory.used)}</span>
+                <span className="memory-value">{memoryInfo.systemMemory.percent.toFixed(1)}%</span>
+              </div>
+              <div className="memory-stats-row">
+                <span className="memory-label">Total: {formatBytes(memoryInfo.systemMemory.total)}</span>
+                <span className="memory-label">Free: {formatBytes(memoryInfo.systemMemory.free)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Process Memory */}
+          <div className="memory-card">
+            <h3>Clawrap Process</h3>
+            <div className="memory-stat">
+              <div className="memory-stats-row">
+                <span className="memory-label">RSS:</span>
+                <span className="memory-value">{formatBytes(memoryInfo.processMemory.rss)}</span>
+              </div>
+              <div className="memory-stats-row">
+                <span className="memory-label">Heap Used:</span>
+                <span className="memory-value">{formatBytes(memoryInfo.processMemory.heapUsed)}</span>
+              </div>
+              <div className="memory-stats-row">
+                <span className="memory-label">Heap Total:</span>
+                <span className="memory-value">{formatBytes(memoryInfo.processMemory.heapTotal)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Gateway Memory */}
+          {memoryInfo.gatewayMemory && memoryInfo.gatewayMemory.pid ? (
+            <div className="memory-card">
+              <h3>OpenClaw Gateway</h3>
+              <div className="memory-stat">
+                <div className="memory-stats-row">
+                  <span className="memory-label">PID:</span>
+                  <span className="memory-value">{memoryInfo.gatewayMemory.pid}</span>
+                </div>
+                {memoryInfo.gatewayMemory.memory && (
+                  <div className="memory-stats-row">
+                    <span className="memory-label">Memory:</span>
+                    <span className="memory-value">{formatBytes(memoryInfo.gatewayMemory.memory)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="memory-card">
+              <h3>OpenClaw Gateway</h3>
+              <div className="memory-stat">
+                <p className="help-text">Gateway process info not available</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button className="btn" onClick={refreshMemory} style={{ marginTop: '24px' }}>
+          Refresh
+        </button>
       </div>
     );
   };

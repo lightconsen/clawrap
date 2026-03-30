@@ -356,3 +356,9 @@ export interface CronLog {
   duration: number;  // milliseconds
   exitCode: number;
 }
+
+export interface MemoryInfo {
+  systemMemory: { total: number; free: number; used: number; percent: number };
+  processMemory: { heapUsed: number; heapTotal: number; rss: number };
+  gatewayMemory?: { pid?: number; memory?: number };
+}

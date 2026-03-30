@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -17,6 +17,7 @@ interface AppState {
   initialViewLoaded: boolean;
   cronJobs: CronJob[];
   cronLogs: CronLog[];
+  memoryInfo: MemoryInfo | null;
 }
 
 type Action =
@@ -32,7 +33,8 @@ type Action =
   | { type: 'SET_INITIAL_VIEW_LOADED'; payload: boolean }
   | { type: 'UPDATE_MODEL'; payload: { slot: 'primary' | 'fallback' | 'image'; model: ModelConfig | null } }
   | { type: 'SET_CRON_JOBS'; payload: CronJob[] }
-  | { type: 'SET_CRON_LOGS'; payload: CronLog[] };
+  | { type: 'SET_CRON_LOGS'; payload: CronLog[] }
+  | { type: 'SET_MEMORY_INFO'; payload: MemoryInfo };
 
 const initialState: AppState = {
   view: 'install',
@@ -47,6 +49,7 @@ const initialState: AppState = {
   initialViewLoaded: false,
   cronJobs: [],
   cronLogs: [],
+  memoryInfo: null,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -87,6 +90,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, cronJobs: action.payload };
     case 'SET_CRON_LOGS':
       return { ...state, cronLogs: action.payload };
+    case 'SET_MEMORY_INFO':
+      return { ...state, memoryInfo: action.payload };
     default:
       return state;
   }
@@ -331,5 +336,19 @@ export function useCron() {
     refreshCronLogs,
     runJob,
     toggleJob,
+  };
+}
+
+export function useMemory() {
+  const { state, dispatch } = useApp();
+
+  const refreshMemory = useCallback(async () => {
+    const result = await ipc.getMemoryInfo();
+    dispatch({ type: 'SET_MEMORY_INFO', payload: result });
+  }, [dispatch]);
+
+  return {
+    memoryInfo: state.memoryInfo,
+    refreshMemory,
   };
 }

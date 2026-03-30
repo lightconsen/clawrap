@@ -661,4 +661,22 @@ export class GatewayManager {
     // Generate 32 bytes of random data and encode as hex
     return randomBytes(32).toString('hex');
   }
+
+  /**
+   * Get gateway process info (PID and memory usage)
+   */
+  public getProcessInfo(): { pid?: number; memory?: number } {
+    if (!this.gatewayProcess || !this.gatewayProcess.pid) {
+      return {};
+    }
+
+    try {
+      const pid = this.gatewayProcess.pid;
+      // Note: Getting memory usage of a child process requires platform-specific code
+      // For now, return the PID which can be used externally to get memory info
+      return { pid };
+    } catch {
+      return {};
+    }
+  }
 }

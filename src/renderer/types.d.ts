@@ -1,5 +1,5 @@
 /// <reference path="./assets.d.ts" />
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo } from '../shared/types';
 
 export interface ElectronAPI {
   // Config API
@@ -54,6 +54,9 @@ export interface ElectronAPI {
   getCronLogs: (jobId?: string) => Promise<{ logs: CronLog[] }>;
   runCronJob: (jobId: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   toggleCronJob: (jobId: string, enabled: boolean) => Promise<{ success: boolean }>;
+
+  // Memory API
+  getMemoryInfo: () => Promise<MemoryInfo>;
 }
 
 declare global {
