@@ -1,3 +1,4 @@
+/// <reference path="./assets.d.ts" />
 import { OpenClawConfig, GatewayStatus, ModelConfig } from '../shared/types';
 
 export interface ElectronAPI {
