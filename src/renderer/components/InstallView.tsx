@@ -4,6 +4,8 @@ import { ipc } from '../lib/ipc';
 import { TEXTS } from '../lib/texts';
 import logo from '../assets/icon.png';
 
+/// <reference path="../assets.d.ts" />
+
 export function InstallView() {
   const setView = useSetView();
   const [status, setStatus] = useState<'check' | 'not-installed' | 'installing' | 'error' | 'success' | 'manual'>('check');
