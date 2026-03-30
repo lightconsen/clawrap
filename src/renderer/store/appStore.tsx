@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -18,6 +18,7 @@ interface AppState {
   cronJobs: CronJob[];
   cronLogs: CronLog[];
   memoryInfo: MemoryInfo | null;
+  agentInfo: AgentInfo | null;
 }
 
 type Action =
@@ -34,7 +35,8 @@ type Action =
   | { type: 'UPDATE_MODEL'; payload: { slot: 'primary' | 'fallback' | 'image'; model: ModelConfig | null } }
   | { type: 'SET_CRON_JOBS'; payload: CronJob[] }
   | { type: 'SET_CRON_LOGS'; payload: CronLog[] }
-  | { type: 'SET_MEMORY_INFO'; payload: MemoryInfo };
+  | { type: 'SET_MEMORY_INFO'; payload: MemoryInfo }
+  | { type: 'SET_AGENT_INFO'; payload: AgentInfo };
 
 const initialState: AppState = {
   view: 'install',
@@ -50,6 +52,7 @@ const initialState: AppState = {
   cronJobs: [],
   cronLogs: [],
   memoryInfo: null,
+  agentInfo: null,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -92,6 +95,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, cronLogs: action.payload };
     case 'SET_MEMORY_INFO':
       return { ...state, memoryInfo: action.payload };
+    case 'SET_AGENT_INFO':
+      return { ...state, agentInfo: action.payload };
     default:
       return state;
   }
@@ -350,5 +355,19 @@ export function useMemory() {
   return {
     memoryInfo: state.memoryInfo,
     refreshMemory,
+  };
+}
+
+export function useAgent() {
+  const { state, dispatch } = useApp();
+
+  const refreshAgentInfo = useCallback(async () => {
+    const result = await ipc.getAgentInfo();
+    dispatch({ type: 'SET_AGENT_INFO', payload: result });
+  }, [dispatch]);
+
+  return {
+    agentInfo: state.agentInfo,
+    refreshAgentInfo,
   };
 }

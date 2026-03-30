@@ -1,5 +1,5 @@
 /// <reference path="./assets.d.ts" />
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo } from '../shared/types';
 
 export interface ElectronAPI {
   // Config API
@@ -57,6 +57,10 @@ export interface ElectronAPI {
 
   // Memory API
   getMemoryInfo: () => Promise<MemoryInfo>;
+
+  // Agent API
+  getAgentInfo: () => Promise<AgentInfo>;
+  getAuthProfiles: () => Promise<AgentAuthProfile[]>;
 }
 
 declare global {

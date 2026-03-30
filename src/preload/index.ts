@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -73,7 +73,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => debugInvoke('cron:toggle', { jobId, enabled }),
 
   // Memory API
-  getMemoryInfo: (): Promise<MemoryInfo> => debugInvoke('memory:getInfo')
+  getMemoryInfo: (): Promise<MemoryInfo> => debugInvoke('memory:getInfo'),
+
+  // Agent API
+  getAgentInfo: (): Promise<AgentInfo> => debugInvoke('agent:getInfo'),
+  getAuthProfiles: (): Promise<AgentAuthProfile[]> => debugInvoke('agent:getAuthProfiles'),
 });
 
 // Type declarations for TypeScript
@@ -113,6 +117,9 @@ declare global {
       // OAuth API
       oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
       oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
+      // Agent API
+      getAgentInfo: () => Promise<AgentInfo>;
+      getAuthProfiles: () => Promise<AgentAuthProfile[]>;
     };
   }
 }

@@ -78,6 +78,8 @@ export const TEXTS = {
     channels: 'Channels',
     gateway: 'Gateway',
     cron: 'Scheduled Tasks',
+    agent: 'Agent',
+    memory: 'Memory',
     about: 'About',
 
     // Models section

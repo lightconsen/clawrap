@@ -257,6 +257,11 @@ export interface OpenClawConfig {
     savedModels: ModelConfig[];          // List of all saved models
     cronJobs?: CronJob[];                // Scheduled cron jobs
   };
+  agents?: {
+    defaults?: {
+      model?: ModelConfig;
+    };
+  };
 }
 
 export interface GatewayStatus {
@@ -361,4 +366,21 @@ export interface MemoryInfo {
   systemMemory: { total: number; free: number; used: number; percent: number };
   processMemory: { heapUsed: number; heapTotal: number; rss: number };
   gatewayMemory?: { pid?: number; memory?: number };
+}
+
+export interface AgentAuthProfile {
+  profileId: string;
+  type: 'api_key' | 'oauth';
+  provider?: string;
+  email?: string;
+  expires?: number;
+  created?: number;
+}
+
+export interface AgentInfo {
+  id: string;
+  name: string;
+  model?: string;
+  authProfiles: AgentAuthProfile[];
+  configPath: string;
 }

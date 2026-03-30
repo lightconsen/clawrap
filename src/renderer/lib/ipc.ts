@@ -1,5 +1,5 @@
 // Type-safe IPC wrapper for React components
-import { ModelConfig, OpenClawConfig, GatewayStatus, CronJob, CronLog } from '@shared/types';
+import { ModelConfig, OpenClawConfig, GatewayStatus, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile } from '@shared/types';
 
 export const ipc = {
   // Config
@@ -50,4 +50,11 @@ export const ipc = {
   getCronLogs: (jobId?: string): Promise<{ logs: CronLog[] }> => window.electronAPI.getCronLogs(jobId),
   runCronJob: (jobId: string): Promise<{ success: boolean; output?: string; error?: string }> => window.electronAPI.runCronJob(jobId),
   toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => window.electronAPI.toggleCronJob(jobId, enabled),
+
+  // Memory
+  getMemoryInfo: (): Promise<MemoryInfo> => window.electronAPI.getMemoryInfo(),
+
+  // Agent
+  getAgentInfo: (): Promise<AgentInfo> => window.electronAPI.getAgentInfo(),
+  getAuthProfiles: (): Promise<AgentAuthProfile[]> => window.electronAPI.getAuthProfiles(),
 };
