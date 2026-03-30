@@ -72,14 +72,14 @@ export const TEXTS = {
   // Settings View
   settings: {
     title: 'Settings',
-    models: 'Models',
+    overview: 'Overview',
+    memory: 'Memory',
+    agent: 'Agent',
+    crons: 'Crons',
     skills: 'Skills',
     tools: 'Tools',
     channels: 'Channels',
-    gateway: 'Gateway',
-    cron: 'Scheduled Tasks',
-    agent: 'Agent',
-    memory: 'Memory',
+    models: 'Models',
     about: 'About',
 
     // Models section

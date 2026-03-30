@@ -18,7 +18,7 @@ export function SettingsView() {
 
   const config = state.config;
 
-  const [activeSection, setActiveSection] = useState('models');
+  const [activeSection, setActiveSection] = useState('overview');
   const [showAddModelModal, setShowAddModelModal] = useState(false);
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [selectedJobForLogs, setSelectedJobForLogs] = useState<string | null>(null);
@@ -86,6 +86,131 @@ export function SettingsView() {
       await removeModel(modelId);
     }
   };
+
+  const renderOverviewSection = () => (
+    <div className="overview-section">
+      <div className="section-header">
+        <h2>Overview</h2>
+        <p className="subtitle">Quick summary of your Clawrap configuration</p>
+      </div>
+
+      <div className="overview-grid">
+        {/* Gateway Status */}
+        <div className="overview-card">
+          <h3>Gateway</h3>
+          <div className="overview-stat">
+            <div className="stat-row">
+              <span className="stat-label">Status:</span>
+              <span className={`stat-value ${gatewayStatus?.running ? 'success' : 'error'}`}>
+                {gatewayStatus?.running ? 'Running' : 'Stopped'}
+              </span>
+            </div>
+            {gatewayStatus?.port && (
+              <div className="stat-row">
+                <span className="stat-label">Port:</span>
+                <span className="stat-value">{gatewayStatus.port}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Primary Model */}
+        <div className="overview-card">
+          <h3>Primary Model</h3>
+          <div className="overview-stat">
+            {primaryModel ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">Provider:</span>
+                  <span className="stat-value">{primaryModel.provider}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Model:</span>
+                  <span className="stat-value">{primaryModel.name}</span>
+                </div>
+              </>
+            ) : (
+              <p className="help-text">No model configured</p>
+            )}
+          </div>
+        </div>
+
+        {/* Agent */}
+        <div className="overview-card">
+          <h3>Agent</h3>
+          <div className="overview-stat">
+            {agentInfo ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">Name:</span>
+                  <span className="stat-value">{agentInfo.name}</span>
+                </div>
+                {agentInfo.model && (
+                  <div className="stat-row">
+                    <span className="stat-label">Model:</span>
+                    <span className="stat-value">{agentInfo.model}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="help-text">Loading...</p>
+            )}
+          </div>
+        </div>
+
+        {/* Memory Quick Stats */}
+        <div className="overview-card">
+          <h3>Memory</h3>
+          <div className="overview-stat">
+            {memoryInfo ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">System:</span>
+                  <span className="stat-value">{memoryInfo.systemMemory.percent.toFixed(1)}% used</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Process RSS:</span>
+                  <span className="stat-value">{(memoryInfo.processMemory.rss / 1024 / 1024).toFixed(0)} MB</span>
+                </div>
+              </>
+            ) : (
+              <p className="help-text">Loading...</p>
+            )}
+          </div>
+        </div>
+
+        {/* Crons */}
+        <div className="overview-card">
+          <h3>Crons</h3>
+          <div className="overview-stat">
+            <div className="stat-row">
+              <span className="stat-label">Total Jobs:</span>
+              <span className="stat-value">{cronJobs.length}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Active:</span>
+              <span className="stat-value">{cronJobs.filter(j => j.enabled).length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Skills & Tools */}
+        <div className="overview-card">
+          <h3>Skills & Tools</h3>
+          <div className="overview-stat">
+            <div className="stat-row">
+              <span className="stat-label">Skills:</span>
+              <span className="stat-value">{skills.length}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Tools:</span>
+              <span className="stat-value">{tools.length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderModelsSection = () => (
     <div className="models-section">
@@ -281,7 +406,7 @@ export function SettingsView() {
     return (
       <div className="cron-section">
         <div className="section-header">
-          <h2>Scheduled Tasks (Cron)</h2>
+          <h2>Crons</h2>
           <p className="subtitle">Manage and monitor scheduled cron jobs</p>
         </div>
 
@@ -620,7 +745,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['models', 'skills', 'tools', 'channels', 'gateway', 'cron', 'agent', 'memory', 'about'] as const).map(section => (
+            {(['overview', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -633,14 +758,14 @@ export function SettingsView() {
         </div>
 
         <div className="settings-content">
-          {activeSection === 'models' && renderModelsSection()}
+          {activeSection === 'overview' && renderOverviewSection()}
+          {activeSection === 'memory' && renderMemorySection()}
+          {activeSection === 'agent' && renderAgentSection()}
+          {activeSection === 'crons' && renderCronSection()}
           {activeSection === 'skills' && renderSkillsSection()}
           {activeSection === 'tools' && renderToolsSection()}
           {activeSection === 'channels' && renderChannelsSection()}
-          {activeSection === 'gateway' && renderGatewaySection()}
-          {activeSection === 'cron' && renderCronSection()}
-          {activeSection === 'agent' && renderAgentSection()}
-          {activeSection === 'memory' && renderMemorySection()}
+          {activeSection === 'models' && renderModelsSection()}
           {activeSection === 'about' && (
             <div className="about-section">
               <div className="section-header">

@@ -1317,6 +1317,34 @@ body {
   color: var(--error);
 }
 
+/* Overview Section */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.overview-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.overview-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Toggle Switch */
 .toggle-switch {
   position: relative;
