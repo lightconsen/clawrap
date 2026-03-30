@@ -1,10 +1,9 @@
+/// <reference path="../assets.d.ts" />
 import React, { useState, useEffect } from 'react';
 import { useApp, useSetView } from '../store/appStore';
 import { ipc } from '../lib/ipc';
 import { TEXTS } from '../lib/texts';
 import logo from '../assets/icon.png';
-
-/// <reference path="../assets.d.ts" />
 
 export function InstallView() {
   const setView = useSetView();
