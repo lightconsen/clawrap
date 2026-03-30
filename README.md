@@ -58,14 +58,26 @@ Get the installer for your operating system from the [Releases page](https://git
 - **Windows**: Run the installer and follow the prompts
 - **Linux**: Make the AppImage executable and run it
 
+![Install](assets/screenshots/02-install.png)
+
 ### Step 3: First Run
 
 When you open Clawrap for the first time:
 
 1. **Wait for installation** - The app automatically installs OpenClaw (takes ~30 seconds)
+
+   ![Install Check](assets/screenshots/03-install-check.png)
+   ![Installing](assets/screenshots/04-installing.png)
+
 2. **Choose your AI model** - Select from popular models like Claude, GPT-4o, or Gemini
+
+   ![Setup Wizard](assets/screenshots/05-setup-wizard.png)
+
 3. **Enter your API key** - Get one from your model provider (links provided in the app)
+
 4. **Start chatting** - That's it! The terminal opens and you're ready to go
+
+   ![Terminal](assets/screenshots/06-terminal.png)
 
 ## Supported AI Models
 

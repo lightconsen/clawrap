@@ -58,14 +58,26 @@ OpenClaw 功能强大，但设置需要命令行知识。Clawrap 改变了这一
 - **Windows**: 运行安装程序并按照提示操作
 - **Linux**: 将 AppImage 设为可执行并运行
 
+![安装](assets/screenshots/02-install.png)
+
 ### 第三步：首次运行
 
 首次打开 Clawrap 时：
 
 1. **等待安装** - 应用程序自动安装 OpenClaw（约 30 秒）
+
+   ![检查安装](assets/screenshots/03-install-check.png)
+   ![正在安装](assets/screenshots/04-installing.png)
+
 2. **选择 AI 模型** - 从流行模型中选择，如 Claude、GPT-4o 或 Gemini
+
+   ![设置向导](assets/screenshots/05-setup-wizard.png)
+
 3. **输入 API 密钥** - 从您的模型提供商处获取（应用程序内提供链接）
+
 4. **开始使用** - 完成了！终端打开，即可开始使用
+
+   ![终端](assets/screenshots/06-terminal.png)
 
 ## 支持的 AI 模型
 
