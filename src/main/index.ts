@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary } from '../shared/types';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { URL } from 'node:url';
@@ -296,12 +296,16 @@ class OpenClawApp {
     });
 
     // Agent IPC Handlers
-    ipcMain.handle('agent:getInfo', async () => {
-      return this.getAgentInfo();
+    ipcMain.handle('agent:list', async () => {
+      return this.listAgents();
     });
 
-    ipcMain.handle('agent:getAuthProfiles', async () => {
-      return this.getAuthProfiles();
+    ipcMain.handle('agent:getInfo', async (_event, agentId?: string) => {
+      return this.getAgentInfo(agentId);
+    });
+
+    ipcMain.handle('agent:getAuthProfiles', async (_event, agentId?: string) => {
+      return this.getAuthProfiles(agentId);
     });
 
     // Personality Files IPC Handler
@@ -1015,11 +1019,13 @@ class OpenClawApp {
     };
   }
 
-  private async getAgentInfo(): Promise<AgentInfo> {
+  private async getAgentInfo(agentId?: string): Promise<AgentInfo> {
     try {
       const os = require('os');
       const path = require('path');
-      const agentDir = path.join(os.homedir(), '.openclaw', 'agents', 'agent');
+      const agentsDir = path.join(os.homedir(), '.openclaw', 'agents');
+      const id = agentId || 'main';
+      const agentDir = path.join(agentsDir, id);
       const configPath = path.join(agentDir, 'config.json');
 
       let agentConfig: any = {};
@@ -1027,8 +1033,8 @@ class OpenClawApp {
         agentConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       }
 
-      // Get auth profiles
-      const authProfiles = await this.getAuthProfiles();
+      // Get auth profiles for this agent
+      const authProfiles = await this.getAuthProfiles(id);
 
       // Get model from agents.defaults if available
       const config = this.configManager.getConfig();
@@ -1039,28 +1045,81 @@ class OpenClawApp {
       }
 
       return {
-        id: 'agent',
-        name: agentConfig.name || 'Default Agent',
+        id,
+        name: agentConfig.name || id.charAt(0).toUpperCase() + id.slice(1),
         model,
         authProfiles,
         configPath: agentDir,
       };
     } catch (error) {
       log.error('Failed to get agent info:', error);
+      const id = agentId || 'main';
       return {
-        id: 'agent',
-        name: 'Default Agent',
+        id,
+        name: id.charAt(0).toUpperCase() + id.slice(1),
         authProfiles: [],
-        configPath: path.join(require('os').homedir(), '.openclaw', 'agents', 'agent'),
+        configPath: path.join(require('os').homedir(), '.openclaw', 'agents', id),
       };
     }
   }
 
-  private async getAuthProfiles(): Promise<AgentAuthProfile[]> {
+  private async listAgents(): Promise<{ agents: AgentSummary[] }> {
     try {
       const os = require('os');
       const path = require('path');
-      const authStorePath = path.join(os.homedir(), '.openclaw', 'agents', 'agent', 'auth-profiles.json');
+      const agentsDir = path.join(os.homedir(), '.openclaw', 'agents');
+
+      if (!fs.existsSync(agentsDir)) {
+        return { agents: [] };
+      }
+
+      const entries = fs.readdirSync(agentsDir);
+      const agents: AgentSummary[] = [];
+
+      for (const entry of entries) {
+        const agentPath = path.join(agentsDir, entry);
+        if (fs.statSync(agentPath).isDirectory()) {
+          // Check for auth-profiles.json
+          const authProfilePath = path.join(agentPath, 'auth-profiles.json');
+          const hasAuthProfiles = fs.existsSync(authProfilePath);
+
+          // Try to get name from config.json
+          let name = entry.charAt(0).toUpperCase() + entry.slice(1);
+          const configPath = path.join(agentPath, 'config.json');
+          if (fs.existsSync(configPath)) {
+            try {
+              const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+              if (config.name) {
+                name = config.name;
+              }
+            } catch {
+              // Use default name
+            }
+          }
+
+          agents.push({
+            id: entry,
+            name,
+            configPath: agentPath,
+            hasAuthProfiles,
+          });
+        }
+      }
+
+      return { agents };
+    } catch (error) {
+      log.error('Failed to list agents:', error);
+      return { agents: [] };
+    }
+  }
+
+  private async getAuthProfiles(agentId?: string): Promise<AgentAuthProfile[]> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const agentsDir = path.join(os.homedir(), '.openclaw', 'agents');
+      const id = agentId || 'main';
+      const authStorePath = path.join(agentsDir, id, 'auth-profiles.json');
 
       if (!fs.existsSync(authStorePath)) {
         return [];

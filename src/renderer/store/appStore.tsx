@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -19,6 +19,7 @@ interface AppState {
   cronLogs: CronLog[];
   memoryInfo: MemoryInfo | null;
   agentInfo: AgentInfo | null;
+  agentList: AgentSummary[];
 }
 
 type Action =
@@ -36,7 +37,8 @@ type Action =
   | { type: 'SET_CRON_JOBS'; payload: CronJob[] }
   | { type: 'SET_CRON_LOGS'; payload: CronLog[] }
   | { type: 'SET_MEMORY_INFO'; payload: MemoryInfo }
-  | { type: 'SET_AGENT_INFO'; payload: AgentInfo };
+  | { type: 'SET_AGENT_INFO'; payload: AgentInfo }
+  | { type: 'SET_AGENT_LIST'; payload: AgentSummary[] };
 
 const initialState: AppState = {
   view: 'install',
@@ -53,6 +55,7 @@ const initialState: AppState = {
   cronLogs: [],
   memoryInfo: null,
   agentInfo: null,
+  agentList: [],
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -97,6 +100,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, memoryInfo: action.payload };
     case 'SET_AGENT_INFO':
       return { ...state, agentInfo: action.payload };
+    case 'SET_AGENT_LIST':
+      return { ...state, agentList: action.payload };
     default:
       return state;
   }
@@ -361,13 +366,26 @@ export function useMemory() {
 export function useAgent() {
   const { state, dispatch } = useApp();
 
-  const refreshAgentInfo = useCallback(async () => {
-    const result = await ipc.getAgentInfo();
+  const refreshAgentList = useCallback(async () => {
+    const result = await ipc.listAgents();
+    dispatch({ type: 'SET_AGENT_LIST', payload: result.agents });
+    return result.agents;
+  }, [dispatch]);
+
+  const refreshAgentInfo = useCallback(async (agentId?: string) => {
+    const result = await ipc.getAgentInfo(agentId);
     dispatch({ type: 'SET_AGENT_INFO', payload: result });
   }, [dispatch]);
 
+  const refreshAuthProfiles = useCallback(async (agentId?: string) => {
+    return await ipc.getAuthProfiles(agentId);
+  }, []);
+
   return {
     agentInfo: state.agentInfo,
+    agentList: state.agentList,
+    refreshAgentList,
     refreshAgentInfo,
+    refreshAuthProfiles,
   };
 }

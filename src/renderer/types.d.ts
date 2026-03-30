@@ -59,8 +59,9 @@ export interface ElectronAPI {
   getMemoryInfo: () => Promise<MemoryInfo>;
 
   // Agent API
-  getAgentInfo: () => Promise<AgentInfo>;
-  getAuthProfiles: () => Promise<AgentAuthProfile[]>;
+  listAgents: () => Promise<{ agents: AgentSummary[] }>;
+  getAgentInfo: (agentId?: string) => Promise<AgentInfo>;
+  getAuthProfiles: (agentId?: string) => Promise<AgentAuthProfile[]>;
 
   // Personality API
   getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;

@@ -385,6 +385,13 @@ export interface AgentInfo {
   configPath: string;
 }
 
+export interface AgentSummary {
+  id: string;
+  name: string;
+  configPath: string;
+  hasAuthProfiles: boolean;
+}
+
 export interface PersonalityFile {
   name: string;
   content: string;

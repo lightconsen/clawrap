@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -76,8 +76,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMemoryInfo: (): Promise<MemoryInfo> => debugInvoke('memory:getInfo'),
 
   // Agent API
-  getAgentInfo: (): Promise<AgentInfo> => debugInvoke('agent:getInfo'),
-  getAuthProfiles: (): Promise<AgentAuthProfile[]> => debugInvoke('agent:getAuthProfiles'),
+  listAgents: (): Promise<{ agents: AgentSummary[] }> => debugInvoke('agent:list'),
+  getAgentInfo: (agentId?: string): Promise<AgentInfo> => debugInvoke('agent:getInfo', agentId),
+  getAuthProfiles: (agentId?: string): Promise<AgentAuthProfile[]> => debugInvoke('agent:getAuthProfiles', agentId),
 
   // Personality API
   getPersonalityFiles: (): Promise<{ files: PersonalityFile[] }> => debugInvoke('personality:getFiles'),
@@ -122,8 +123,9 @@ declare global {
       oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
       oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
       // Agent API
-      getAgentInfo: () => Promise<AgentInfo>;
-      getAuthProfiles: () => Promise<AgentAuthProfile[]>;
+      listAgents: () => Promise<{ agents: AgentSummary[] }>;
+      getAgentInfo: (agentId?: string) => Promise<AgentInfo>;
+      getAuthProfiles: (agentId?: string) => Promise<AgentAuthProfile[]>;
       // Personality API
       getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;
       savePersonalityFile: (name: string, content: string) => Promise<{ success: boolean; error?: string }>;
