@@ -786,12 +786,19 @@ class OpenClawApp {
       const path = require('path');
       const cronJobsPath = path.join(os.homedir(), '.openclaw', 'cron', 'jobs.json');
 
+      console.log('[Cron] Checking for cron jobs at:', cronJobsPath);
+      console.log('[Cron] File exists:', fs.existsSync(cronJobsPath));
+
       if (!fs.existsSync(cronJobsPath)) {
+        console.log('[Cron] File does not exist, returning empty jobs');
         return { jobs: [] };
       }
 
       const cronData = JSON.parse(fs.readFileSync(cronJobsPath, 'utf-8'));
       const jobs = cronData.jobs || [];
+
+      console.log('[Cron] Raw cron data:', JSON.stringify(cronData, null, 2));
+      console.log('[Cron] Jobs count:', jobs.length);
 
       // Transform to the format expected by the UI
       const transformedJobs = jobs.map((job: any) => {
@@ -819,7 +826,7 @@ class OpenClawApp {
           command = `Event: ${job.payload.text}`;
         }
 
-        return {
+        const transformed = {
           id: job.id,
           name: job.name || 'Unnamed Job',
           schedule,
@@ -830,10 +837,15 @@ class OpenClawApp {
           lastError: job.state?.lastError,
           nextRun: job.state?.nextRunAtMs,
         };
+
+        console.log('[Cron] Transformed job:', JSON.stringify(transformed, null, 2));
+        return transformed;
       });
 
+      console.log('[Cron] Returning transformed jobs:', transformedJobs.length);
       return { jobs: transformedJobs };
     } catch (error) {
+      console.error('[Cron] Error getting cron jobs:', error);
       log.error('Failed to get cron jobs:', error);
       return { jobs: [] };
     }
