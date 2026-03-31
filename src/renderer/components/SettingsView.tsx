@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
-import { ModelConfig, PersonalityFile, AgentSummary } from '@shared/types';
+import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export function SettingsView() {
@@ -31,7 +31,8 @@ export function SettingsView() {
   const [editedContent, setEditedContent] = useState<string>('');
   const [savingPersonality, setSavingPersonality] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ success?: boolean; message?: string } | null>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('main');
+  const [selectedCreatedAgentId, setSelectedCreatedAgentId] = useState<string | null>(null);
+  const [mainAgentInfo, setMainAgentInfo] = useState<AgentInfo | null>(null);
 
   // Poll memory info when on memory section
   React.useEffect(() => {
@@ -51,22 +52,26 @@ export function SettingsView() {
       agentInitialized.current = true;
       refreshAgentList().then((agents) => {
         if (agents.length > 0) {
-          // Prefer 'main' agent as default, otherwise use first available
-          const mainAgent = agents.find(a => a.id === 'main');
-          const targetAgentId = mainAgent ? 'main' : agents[0].id;
-          setSelectedAgentId(targetAgentId);
-          refreshAgentInfo(targetAgentId);
+          // Load main agent info first
+          refreshAgentInfo('main');
         }
       });
     }
   }, [activeSection, refreshAgentList, refreshAgentInfo]);
 
-  // Refresh agent info when selectedAgentId changes (after initial load)
+  // Store main agent info when it loads
   React.useEffect(() => {
-    if (activeSection === 'agent' && agentInitialized.current && selectedAgentId) {
-      refreshAgentInfo(selectedAgentId);
+    if (agentInfo && agentInfo.id === 'main') {
+      setMainAgentInfo(agentInfo);
     }
-  }, [activeSection, selectedAgentId, refreshAgentInfo]);
+  }, [agentInfo]);
+
+  // Refresh created agent info when selectedCreatedAgentId changes
+  React.useEffect(() => {
+    if (activeSection === 'agent' && selectedCreatedAgentId) {
+      refreshAgentInfo(selectedCreatedAgentId);
+    }
+  }, [activeSection, selectedCreatedAgentId, refreshAgentInfo]);
 
   // Load cron jobs when on crons section
   React.useEffect(() => {
@@ -599,11 +604,9 @@ export function SettingsView() {
       return `${days} day${days !== 1 ? 's' : ''} remaining`;
     };
 
-    // Separate main agent from other agents
+    // Separate main agent from created agents
     const mainAgentSummary = agentList.find(a => a.id === 'main');
-    const otherAgents = agentList.filter(a => a.id !== 'main');
-    const isMainAgentSelected = selectedAgentId === 'main' || selectedAgentId === undefined;
-    const mainAgentInfo = isMainAgentSelected ? agentInfo : null;
+    const createdAgents = agentList.filter(a => a.id !== 'main');
 
     return (
       <div className="agent-section">
@@ -619,7 +622,7 @@ export function SettingsView() {
             {/* Main Agent - Always shown first */}
             {mainAgentSummary && (
               <div className="main-agent-section">
-                {mainAgentInfo && mainAgentInfo.id === 'main' ? (
+                {mainAgentInfo ? (
                   <div className="agent-details">
                     <div className="agent-grid">
                       {/* Agent Info Card */}
@@ -655,7 +658,7 @@ export function SettingsView() {
                         <p className="help-text">No authentication profiles configured</p>
                       ) : (
                         <div className="auth-profiles-list">
-                          {mainAgentInfo.authProfiles.map((profile, idx) => (
+                          {mainAgentInfo.authProfiles.map((profile: AgentAuthProfile, idx: number) => (
                             <div key={idx} className="auth-profile-card">
                               <div className="auth-profile-header">
                                 <span className="auth-profile-name">{profile.profileId}</span>
@@ -707,17 +710,17 @@ export function SettingsView() {
               </div>
             )}
 
-            {/* Other Agents - Shown as tabs below */}
-            {otherAgents.length > 0 && (
-              <div className="other-agents-section">
-                <h3 style={{ marginBottom: '12px', fontSize: '15px', color: 'var(--text-secondary)' }}>Other Agents</h3>
+            {/* Created Agents - Shown as tabs below */}
+            {createdAgents.length > 0 && (
+              <div className="created-agents-section">
+                <h3 style={{ marginBottom: '12px', fontSize: '15px', color: 'var(--text-secondary)' }}>Created Agents</h3>
                 <div className="agent-tab-list">
-                  {otherAgents.map(agent => (
+                  {createdAgents.map(agent => (
                     <button
                       key={agent.id}
-                      className={`agent-tab ${selectedAgentId === agent.id ? 'active' : ''}`}
+                      className={`agent-tab ${selectedCreatedAgentId === agent.id ? 'active' : ''}`}
                       onClick={() => {
-                        setSelectedAgentId(agent.id);
+                        setSelectedCreatedAgentId(agent.id);
                       }}
                     >
                       {agent.name}
@@ -726,7 +729,7 @@ export function SettingsView() {
                   ))}
                 </div>
 
-                {agentInfo && agentInfo.id === selectedAgentId && (
+                {agentInfo && agentInfo.id === selectedCreatedAgentId && (
                   <div className="agent-details" style={{ marginTop: '16px' }}>
                     <div className="agent-grid">
                       {/* Agent Info Card */}
@@ -762,7 +765,7 @@ export function SettingsView() {
                         <p className="help-text">No authentication profiles configured</p>
                       ) : (
                         <div className="auth-profiles-list">
-                          {agentInfo.authProfiles.map((profile, idx) => (
+                          {agentInfo.authProfiles.map((profile: AgentAuthProfile, idx: number) => (
                             <div key={idx} className="auth-profile-card">
                               <div className="auth-profile-header">
                                 <span className="auth-profile-name">{profile.profileId}</span>
