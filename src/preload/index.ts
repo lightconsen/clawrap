@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCronLogs: (jobId?: string): Promise<{ logs: CronLog[] }> => debugInvoke('cron:getLogs', jobId),
   runCronJob: (jobId: string): Promise<{ success: boolean; output?: string; error?: string }> => debugInvoke('cron:run', jobId),
   toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => debugInvoke('cron:toggle', { jobId, enabled }),
+  removeCronJob: (jobId: string): Promise<{ success: boolean; error?: string }> => debugInvoke('cron:remove', jobId),
 
   // Memory API
   getMemoryInfo: (): Promise<MemoryInfo> => debugInvoke('memory:getInfo'),

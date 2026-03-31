@@ -54,6 +54,7 @@ export interface ElectronAPI {
   getCronLogs: (jobId?: string) => Promise<{ logs: CronLog[] }>;
   runCronJob: (jobId: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   toggleCronJob: (jobId: string, enabled: boolean) => Promise<{ success: boolean }>;
+  removeCronJob: (jobId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Memory API
   getMemoryInfo: () => Promise<MemoryInfo>;

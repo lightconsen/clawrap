@@ -295,6 +295,10 @@ class OpenClawApp {
       return this.toggleCronJob(jobId, enabled);
     });
 
+    ipcMain.handle('cron:remove', async (_event, jobId: string) => {
+      return this.removeCronJob(jobId);
+    });
+
     // Agent IPC Handlers
     ipcMain.handle('agent:list', async () => {
       return this.listAgents();
@@ -983,6 +987,33 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to toggle cron job:', error);
       return { success: false };
+    }
+  }
+
+  private async removeCronJob(jobId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const cronJobsPath = path.join(os.homedir(), '.openclaw', 'cron', 'jobs.json');
+
+      if (!fs.existsSync(cronJobsPath)) {
+        return { success: false, error: 'Cron jobs file not found' };
+      }
+
+      const cronData = JSON.parse(fs.readFileSync(cronJobsPath, 'utf-8'));
+      const jobIndex = (cronData.jobs || []).findIndex((j: any) => j.id === jobId);
+
+      if (jobIndex === -1) {
+        return { success: false, error: 'Job not found' };
+      }
+
+      cronData.jobs.splice(jobIndex, 1);
+      fs.writeFileSync(cronJobsPath, JSON.stringify(cronData, null, 2));
+
+      return { success: true };
+    } catch (error) {
+      log.error('Failed to remove cron job:', error);
+      return { success: false, error: (error as Error).message };
     }
   }
 

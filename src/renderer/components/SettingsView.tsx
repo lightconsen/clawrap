@@ -13,7 +13,7 @@ export function SettingsView() {
   const { skills, setSkills } = useSkills();
   const { tools, setTools } = useTools();
   const { channels, setChannels } = useChannels();
-  const { cronJobs, cronLogs, refreshCronJobs, refreshCronLogs, runJob, toggleJob } = useCron();
+  const { cronJobs, cronLogs, refreshCronJobs, refreshCronLogs, runJob, toggleJob, removeJob } = useCron();
   const { memoryInfo, refreshMemory } = useMemory();
   const { agentInfo, agentList, refreshAgentList, refreshAgentInfo } = useAgent();
 
@@ -487,6 +487,17 @@ export function SettingsView() {
       refreshCronLogs(jobId);
     };
 
+    const handleDisableJob = async (jobId: string) => {
+      await toggleJob(jobId, false);
+    };
+
+    const handleRemoveJob = async (jobId: string) => {
+      if (!confirm('Are you sure you want to remove this cron job?')) {
+        return;
+      }
+      await removeJob(jobId);
+    };
+
     return (
       <div className="cron-section">
         <div className="section-header">
@@ -555,6 +566,19 @@ export function SettingsView() {
                     onClick={() => handleViewLogs(job.id)}
                   >
                     {selectedJobForLogs === job.id ? 'Hide Logs' : 'View Logs'}
+                  </button>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => handleDisableJob(job.id)}
+                    disabled={!job.enabled}
+                  >
+                    Disable
+                  </button>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleRemoveJob(job.id)}
+                  >
+                    Remove
                   </button>
                 </div>
 

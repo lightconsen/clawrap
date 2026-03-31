@@ -50,6 +50,7 @@ export const ipc = {
   getCronLogs: (jobId?: string): Promise<{ logs: CronLog[] }> => window.electronAPI.getCronLogs(jobId),
   runCronJob: (jobId: string): Promise<{ success: boolean; output?: string; error?: string }> => window.electronAPI.runCronJob(jobId),
   toggleCronJob: (jobId: string, enabled: boolean): Promise<{ success: boolean }> => window.electronAPI.toggleCronJob(jobId, enabled),
+  removeCronJob: (jobId: string): Promise<{ success: boolean; error?: string }> => window.electronAPI.removeCronJob(jobId),
 
   // Memory
   getMemoryInfo: (): Promise<MemoryInfo> => window.electronAPI.getMemoryInfo(),

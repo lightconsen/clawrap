@@ -339,6 +339,14 @@ export function useCron() {
     return result;
   }, [dispatch, refreshCronJobs]);
 
+  const removeJob = useCallback(async (jobId: string) => {
+    const result = await ipc.removeCronJob(jobId);
+    if (result.success) {
+      await refreshCronJobs();
+    }
+    return result;
+  }, [dispatch, refreshCronJobs]);
+
   return {
     cronJobs: state.cronJobs,
     cronLogs: state.cronLogs,
@@ -346,6 +354,7 @@ export function useCron() {
     refreshCronLogs,
     runJob,
     toggleJob,
+    removeJob,
   };
 }
 
