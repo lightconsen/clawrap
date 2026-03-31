@@ -426,3 +426,70 @@ export interface DailyTokenUsage {
   totalTokens: number;
   cost: number;
 }
+
+export interface PermissionInfo {
+  fileAccess: FileAccessInfo;
+  networkAccess: NetworkAccessInfo;
+  commandExecution: CommandExecutionInfo;
+}
+
+export interface FileAccessInfo {
+  mode: 'readonly' | 'specific_dirs' | 'full_access';
+  allowedDirs: string[];
+  recentAccesses: FileAccessLog[];
+  totalReads: number;
+  totalWrites: number;
+  totalDeletes: number;
+}
+
+export interface FileAccessLog {
+  timestamp: number;
+  action: 'read' | 'write' | 'delete';
+  path: string;
+  success: boolean;
+}
+
+export interface NetworkAccessInfo {
+  whitelistMode: boolean;
+  allowedHosts: string[];
+  recentRequests: NetworkRequestLog[];
+  totalRequests: number;
+  blockedRequests: number;
+}
+
+export interface NetworkRequestLog {
+  timestamp: number;
+  host: string;
+  method: string;
+  path: string;
+  blocked: boolean;
+}
+
+export interface CommandExecutionInfo {
+  requireConfirmation: boolean;
+  recentCommands: CommandExecLog[];
+  totalExecuted: number;
+  blockedCommands: number;
+}
+
+export interface CommandExecLog {
+  timestamp: number;
+  command: string;
+  confirmed: boolean;
+  blocked: boolean;
+  reason?: string;
+}
+
+export interface PermissionSettings {
+  fileAccess: {
+    mode: 'readonly' | 'specific_dirs' | 'full_access';
+    allowedDirs: string[];
+  };
+  network: {
+    whitelistMode: boolean;
+    allowedHosts: string[];
+  };
+  commands: {
+    requireConfirmation: boolean;
+  };
+}

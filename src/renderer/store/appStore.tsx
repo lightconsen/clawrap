@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -21,6 +21,8 @@ interface AppState {
   agentInfo: AgentInfo | null;
   agentList: AgentSummary[];
   tokenUsage: TokenUsageInfo | null;
+  permissionInfo: PermissionInfo | null;
+  permissionSettings: PermissionSettings | null;
 }
 
 type Action =
@@ -40,7 +42,9 @@ type Action =
   | { type: 'SET_MEMORY_INFO'; payload: MemoryInfo }
   | { type: 'SET_AGENT_INFO'; payload: AgentInfo }
   | { type: 'SET_AGENT_LIST'; payload: AgentSummary[] }
-  | { type: 'SET_TOKEN_USAGE'; payload: TokenUsageInfo };
+  | { type: 'SET_TOKEN_USAGE'; payload: TokenUsageInfo }
+  | { type: 'SET_PERMISSION_INFO'; payload: PermissionInfo }
+  | { type: 'SET_PERMISSION_SETTINGS'; payload: PermissionSettings };
 
 const initialState: AppState = {
   view: 'install',
@@ -59,6 +63,8 @@ const initialState: AppState = {
   agentInfo: null,
   agentList: [],
   tokenUsage: null,
+  permissionInfo: null,
+  permissionSettings: null,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -105,6 +111,12 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, agentInfo: action.payload };
     case 'SET_AGENT_LIST':
       return { ...state, agentList: action.payload };
+    case 'SET_TOKEN_USAGE':
+      return { ...state, tokenUsage: action.payload };
+    case 'SET_PERMISSION_INFO':
+      return { ...state, permissionInfo: action.payload };
+    case 'SET_PERMISSION_SETTINGS':
+      return { ...state, permissionSettings: action.payload };
     default:
       return state;
   }
@@ -413,5 +425,37 @@ export function useToken() {
   return {
     tokenUsage: state.tokenUsage,
     refreshTokenUsage,
+  };
+}
+
+export function usePermission() {
+  const { state, dispatch } = useApp();
+
+  const refreshPermissionInfo = useCallback(async () => {
+    const result = await ipc.getPermissionInfo();
+    dispatch({ type: 'SET_PERMISSION_INFO', payload: result });
+    return result;
+  }, [dispatch]);
+
+  const refreshPermissionSettings = useCallback(async () => {
+    const result = await ipc.getPermissionSettings();
+    dispatch({ type: 'SET_PERMISSION_SETTINGS', payload: result });
+    return result;
+  }, [dispatch]);
+
+  const updatePermissionSettings = useCallback(async (settings: PermissionSettings) => {
+    const result = await ipc.updatePermissionSettings(settings);
+    if (result.success) {
+      await refreshPermissionSettings();
+    }
+    return result;
+  }, [dispatch, refreshPermissionSettings]);
+
+  return {
+    permissionInfo: state.permissionInfo,
+    permissionSettings: state.permissionSettings,
+    refreshPermissionInfo,
+    refreshPermissionSettings,
+    updatePermissionSettings,
   };
 }

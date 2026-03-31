@@ -74,6 +74,7 @@ export const TEXTS = {
     title: 'Settings',
     overview: 'Overview',
     usage: 'Usage',
+    permissions: 'Permissions',
     memory: 'Memory',
     agent: 'Agent',
     crons: 'Crons',

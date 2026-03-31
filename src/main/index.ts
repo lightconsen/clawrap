@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '../shared/types';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { URL } from 'node:url';
@@ -324,6 +324,19 @@ class OpenClawApp {
 
     ipcMain.handle('personality:saveFile', async (_event, { name, content }: { name: string; content: string }) => {
       return this.savePersonalityFile(name, content);
+    });
+
+    // Permission IPC Handlers
+    ipcMain.handle('permission:getInfo', async () => {
+      return this.getPermissionInfo();
+    });
+
+    ipcMain.handle('permission:getSettings', async () => {
+      return this.getPermissionSettings();
+    });
+
+    ipcMain.handle('permission:updateSettings', async (_event, settings: PermissionSettings) => {
+      return this.updatePermissionSettings(settings);
     });
   }
 
@@ -1283,6 +1296,124 @@ class OpenClawApp {
       return { success: true };
     } catch (error) {
       log.error('Failed to save personality file:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  private async getPermissionInfo(): Promise<PermissionInfo> {
+    const os = require('os');
+    const path = require('path');
+    const permissionsPath = path.join(os.homedir(), '.openclaw', 'permissions.json');
+    const logPath = path.join(os.homedir(), '.openclaw', 'permission-log.json');
+
+    // Default permission info
+    const defaultInfo: PermissionInfo = {
+      fileAccess: {
+        mode: 'readonly',
+        allowedDirs: [],
+        recentAccesses: [],
+        totalReads: 0,
+        totalWrites: 0,
+        totalDeletes: 0,
+      },
+      networkAccess: {
+        whitelistMode: false,
+        allowedHosts: [],
+        recentRequests: [],
+        totalRequests: 0,
+        blockedRequests: 0,
+      },
+      commandExecution: {
+        requireConfirmation: true,
+        recentCommands: [],
+        totalExecuted: 0,
+        blockedCommands: 0,
+      },
+    };
+
+    try {
+      // Read permission settings
+      let settings = defaultInfo;
+      if (fs.existsSync(permissionsPath)) {
+        settings = { ...defaultInfo, ...JSON.parse(fs.readFileSync(permissionsPath, 'utf-8')) };
+      }
+
+      // Read permission logs
+      if (fs.existsSync(logPath)) {
+        const logs = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
+        if (logs.fileAccesses) settings.fileAccess.recentAccesses = logs.fileAccesses.slice(-10);
+        if (logs.networkRequests) settings.networkAccess.recentRequests = logs.networkRequests.slice(-10);
+        if (logs.commands) settings.commandExecution.recentCommands = logs.commands.slice(-10);
+        if (logs.totals) {
+          settings.fileAccess.totalReads = logs.totals.reads || 0;
+          settings.fileAccess.totalWrites = logs.totals.writes || 0;
+          settings.fileAccess.totalDeletes = logs.totals.deletes || 0;
+          settings.networkAccess.totalRequests = logs.totals.networkRequests || 0;
+          settings.networkAccess.blockedRequests = logs.totals.blockedRequests || 0;
+          settings.commandExecution.totalExecuted = logs.totals.commandsExecuted || 0;
+          settings.commandExecution.blockedCommands = logs.totals.blockedCommands || 0;
+        }
+      }
+
+      return settings;
+    } catch (error) {
+      log.error('Failed to get permission info:', error);
+      return defaultInfo;
+    }
+  }
+
+  private async getPermissionSettings(): Promise<PermissionSettings> {
+    const os = require('os');
+    const path = require('path');
+    const permissionsPath = path.join(os.homedir(), '.openclaw', 'permissions.json');
+
+    const defaultSettings: PermissionSettings = {
+      fileAccess: {
+        mode: 'readonly',
+        allowedDirs: [],
+      },
+      network: {
+        whitelistMode: false,
+        allowedHosts: [],
+      },
+      commands: {
+        requireConfirmation: true,
+      },
+    };
+
+    try {
+      if (fs.existsSync(permissionsPath)) {
+        const saved = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'));
+        return {
+          fileAccess: { ...defaultSettings.fileAccess, ...saved.fileAccess },
+          network: { ...defaultSettings.network, ...saved.network },
+          commands: { ...defaultSettings.commands, ...saved.commands },
+        };
+      }
+      return defaultSettings;
+    } catch (error) {
+      log.error('Failed to get permission settings:', error);
+      return defaultSettings;
+    }
+  }
+
+  private async updatePermissionSettings(settings: PermissionSettings): Promise<{ success: boolean; error?: string }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const permissionsPath = path.join(os.homedir(), '.openclaw', 'permissions.json');
+
+      // Ensure directory exists
+      const permissionsDir = path.dirname(permissionsPath);
+      if (!fs.existsSync(permissionsDir)) {
+        fs.mkdirSync(permissionsDir, { recursive: true });
+      }
+
+      fs.writeFileSync(permissionsPath, JSON.stringify(settings, null, 2), 'utf-8');
+      log.info('Permission settings updated');
+      return { success: true };
+    } catch (error) {
+      log.error('Failed to update permission settings:', error);
       return { success: false, error: (error as Error).message };
     }
   }

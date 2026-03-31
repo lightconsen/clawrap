@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -85,6 +85,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Personality API
   getPersonalityFiles: (): Promise<{ files: PersonalityFile[] }> => debugInvoke('personality:getFiles'),
   savePersonalityFile: (name: string, content: string): Promise<{ success: boolean; error?: string }> => debugInvoke('personality:saveFile', name, content),
+
+  // Permission API
+  getPermissionInfo: (): Promise<PermissionInfo> => debugInvoke('permission:getInfo'),
+  getPermissionSettings: (): Promise<PermissionSettings> => debugInvoke('permission:getSettings'),
+  updatePermissionSettings: (settings: PermissionSettings): Promise<{ success: boolean; error?: string }> => debugInvoke('permission:updateSettings', settings),
 });
 
 // Type declarations for TypeScript

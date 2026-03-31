@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken, usePermission } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AgentDialog } from './AgentDialog';
-import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile } from '@shared/types';
+import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile, PermissionSettings } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export function SettingsView() {
@@ -19,6 +19,7 @@ export function SettingsView() {
   const { memoryInfo, refreshMemory } = useMemory();
   const { agentInfo, agentList, refreshAgentList, refreshAgentInfo } = useAgent();
   const { tokenUsage, refreshTokenUsage } = useToken();
+  const { permissionInfo, permissionSettings, refreshPermissionInfo, refreshPermissionSettings, updatePermissionSettings } = usePermission();
 
   const config = state.config;
 
@@ -37,6 +38,8 @@ export function SettingsView() {
   const [mainAgentInfo, setMainAgentInfo] = useState<AgentInfo | null>(null);
   const [selectedAgentForDialog, setSelectedAgentForDialog] = useState<AgentSummary | null>(null);
   const [dialogAgentInfo, setDialogAgentInfo] = useState<AgentInfo | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [localPermissionSettings, setLocalPermissionSettings] = useState<PermissionSettings | null>(null);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -64,6 +67,16 @@ export function SettingsView() {
       refreshTokenUsage();
     }
   }, [activeSection, refreshTokenUsage]);
+
+  // Load permission settings when on permissions section
+  React.useEffect(() => {
+    if (activeSection === 'permissions') {
+      refreshPermissionSettings().then((settings) => {
+        setLocalPermissionSettings(settings);
+      });
+      refreshPermissionInfo();
+    }
+  }, [activeSection, refreshPermissionSettings, refreshPermissionInfo]);
 
   // Track if we've initialized the agent section
   const agentInitialized = React.useRef(false);
@@ -608,6 +621,198 @@ export function SettingsView() {
     </div>
   );
 
+  const renderPermissionsSection = () => {
+    const handleSave = async () => {
+      if (!localPermissionSettings) return;
+      setSavingSettings(true);
+      try {
+        await updatePermissionSettings(localPermissionSettings);
+      } finally {
+        setSavingSettings(false);
+      }
+    };
+
+    if (!localPermissionSettings || !permissionInfo) {
+      return (
+        <div className="permissions-section">
+          <div className="section-header">
+            <h2>Permissions</h2>
+            <p className="subtitle">Control file access, network requests, and command execution</p>
+          </div>
+          <div className="loading-state">Loading permission settings...</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="permissions-section">
+        <div className="section-header">
+          <h2>Permissions</h2>
+          <p className="subtitle">Control file access, network requests, and command execution</p>
+        </div>
+
+        {/* Permission Dashboard */}
+        <div className="permission-dashboard">
+          <div className="permission-stat-card">
+            <h3>File Access</h3>
+            <div className="permission-stat">
+              <div className="stat-row">
+                <span className="stat-label">Mode:</span>
+                <span className="stat-value">{permissionInfo.fileAccess.mode}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Reads:</span>
+                <span className="stat-value">{permissionInfo.fileAccess.totalReads}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Writes:</span>
+                <span className="stat-value">{permissionInfo.fileAccess.totalWrites}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Deletes:</span>
+                <span className="stat-value">{permissionInfo.fileAccess.totalDeletes}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="permission-stat-card">
+            <h3>Network Access</h3>
+            <div className="permission-stat">
+              <div className="stat-row">
+                <span className="stat-label">Whitelist Mode:</span>
+                <span className="stat-value">{permissionInfo.networkAccess.whitelistMode ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Total Requests:</span>
+                <span className="stat-value">{permissionInfo.networkAccess.totalRequests}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Blocked:</span>
+                <span className="stat-value" style={{ color: permissionInfo.networkAccess.blockedRequests > 0 ? 'var(--error)' : 'inherit' }}>
+                  {permissionInfo.networkAccess.blockedRequests}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="permission-stat-card">
+            <h3>Command Execution</h3>
+            <div className="permission-stat">
+              <div className="stat-row">
+                <span className="stat-label">Require Confirmation:</span>
+                <span className="stat-value">{permissionInfo.commandExecution.requireConfirmation ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Executed:</span>
+                <span className="stat-value">{permissionInfo.commandExecution.totalExecuted}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Blocked:</span>
+                <span className="stat-value" style={{ color: permissionInfo.commandExecution.blockedCommands > 0 ? 'var(--error)' : 'inherit' }}>
+                  {permissionInfo.commandExecution.blockedCommands}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* File Access Settings */}
+        <div className="permission-settings-block">
+          <h3>File Access</h3>
+          <div className="form-group">
+            <label>Access Mode</label>
+            <select
+              className="form-select"
+              value={localPermissionSettings.fileAccess.mode}
+              onChange={(e) => setLocalPermissionSettings({
+                ...localPermissionSettings,
+                fileAccess: { ...localPermissionSettings.fileAccess, mode: e.target.value as 'readonly' | 'specific_dirs' | 'full_access' },
+              })}
+            >
+              <option value="readonly">Read Only</option>
+              <option value="specific_dirs">Specific Directories</option>
+              <option value="full_access">Full Access</option>
+            </select>
+          </div>
+
+          {localPermissionSettings.fileAccess.mode === 'specific_dirs' && (
+            <div className="form-group">
+              <label>Allowed Directories (one per line)</label>
+              <textarea
+                className="form-input"
+                rows={4}
+                value={localPermissionSettings.fileAccess.allowedDirs.join('\n')}
+                onChange={(e) => setLocalPermissionSettings({
+                  ...localPermissionSettings,
+                  fileAccess: { ...localPermissionSettings.fileAccess, allowedDirs: e.target.value.split('\n').filter(d => d.trim()) },
+                })}
+                placeholder="/Users/username/projects&#10;/Volumes/data"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Network Settings */}
+        <div className="permission-settings-block">
+          <h3>Network Access</h3>
+          <div className="form-group">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={localPermissionSettings.network.whitelistMode}
+                onChange={(e) => setLocalPermissionSettings({
+                  ...localPermissionSettings,
+                  network: { ...localPermissionSettings.network, whitelistMode: e.target.checked },
+                })}
+              />
+              <span className="toggle-slider"></span>
+              <span style={{ marginLeft: '12px' }}>Whitelist Mode (only allow listed hosts)</span>
+            </label>
+          </div>
+
+          {localPermissionSettings.network.whitelistMode && (
+            <div className="form-group">
+              <label>Allowed Hosts (one per line)</label>
+              <textarea
+                className="form-input"
+                rows={4}
+                value={localPermissionSettings.network.allowedHosts.join('\n')}
+                onChange={(e) => setLocalPermissionSettings({
+                  ...localPermissionSettings,
+                  network: { ...localPermissionSettings.network, allowedHosts: e.target.value.split('\n').filter(h => h.trim()) },
+                })}
+                placeholder="api.anthropic.com&#10;api.openai.com"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Command Execution Settings */}
+        <div className="permission-settings-block">
+          <h3>Command Execution</h3>
+          <div className="form-group">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={localPermissionSettings.commands.requireConfirmation}
+                onChange={(e) => setLocalPermissionSettings({
+                  ...localPermissionSettings,
+                  commands: { ...localPermissionSettings.commands, requireConfirmation: e.target.checked },
+                })}
+              />
+              <span className="toggle-slider"></span>
+              <span style={{ marginLeft: '12px' }}>Require confirmation before executing commands</span>
+            </label>
+          </div>
+        </div>
+
+        <button className="btn" onClick={handleSave} disabled={savingSettings} style={{ marginTop: '24px' }}>
+          {savingSettings ? 'Saving...' : 'Save Settings'}
+        </button>
+      </div>
+    );
+  };
+
   const renderGatewaySection = () => (
     <div className="gateway-section">
       <div className="section-header">
@@ -1144,7 +1349,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['overview', 'usage', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
+            {(['overview', 'usage', 'permissions', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -1159,6 +1364,7 @@ export function SettingsView() {
         <div className="settings-content">
           {activeSection === 'overview' && renderOverviewSection()}
           {activeSection === 'usage' && renderUsageSection()}
+          {activeSection === 'permissions' && renderPermissionsSection()}
           {activeSection === 'memory' && renderMemorySection()}
           {activeSection === 'agent' && renderAgentSection()}
           {activeSection === 'crons' && renderCronSection()}
