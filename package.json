@@ -1,6 +1,6 @@
 {
   "name": "clawrap",
-  "version": "1.0.10",
+  "version": "1.1.0",
   "description": "Clawrap - Electron wrapper for OpenClaw web terminal",
   "main": "dist/main/index.js",
   "author": "OpenClaw <openclaw@example.com>",
