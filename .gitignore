@@ -36,3 +36,6 @@ Thumbs.db
 
 # Git hooks (tracked in .git-hooks/, not .git/hooks/)
 .git/hooks/
+
+# Reports
+report.md
