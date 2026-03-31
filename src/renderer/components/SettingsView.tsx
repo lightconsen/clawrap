@@ -3,6 +3,7 @@ import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChan
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { AgentDialog } from './AgentDialog';
 import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
@@ -32,8 +33,9 @@ export function SettingsView() {
   const [editedContent, setEditedContent] = useState<string>('');
   const [savingPersonality, setSavingPersonality] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ success?: boolean; message?: string } | null>(null);
-  const [selectedCreatedAgentId, setSelectedCreatedAgentId] = useState<string | null>(null);
   const [mainAgentInfo, setMainAgentInfo] = useState<AgentInfo | null>(null);
+  const [selectedAgentForDialog, setSelectedAgentForDialog] = useState<AgentSummary | null>(null);
+  const [dialogAgentInfo, setDialogAgentInfo] = useState<AgentInfo | null>(null);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -78,12 +80,19 @@ export function SettingsView() {
     }
   }, [agentInfo]);
 
-  // Refresh created agent info when selectedCreatedAgentId changes
+  // Load agent info when dialog is opened
   React.useEffect(() => {
-    if (activeSection === 'agent' && selectedCreatedAgentId) {
-      refreshAgentInfo(selectedCreatedAgentId);
+    if (selectedAgentForDialog) {
+      refreshAgentInfo(selectedAgentForDialog.id);
     }
-  }, [activeSection, selectedCreatedAgentId, refreshAgentInfo]);
+  }, [selectedAgentForDialog, refreshAgentInfo]);
+
+  // Update dialog agent info when agentInfo changes
+  React.useEffect(() => {
+    if (selectedAgentForDialog && agentInfo && agentInfo.id === selectedAgentForDialog.id) {
+      setDialogAgentInfo(agentInfo);
+    }
+  }, [agentInfo, selectedAgentForDialog]);
 
   // Load cron jobs when on crons section
   React.useEffect(() => {
@@ -771,108 +780,32 @@ export function SettingsView() {
               </div>
             )}
 
-            {/* Created Agents - Shown as tabs below */}
+            {/* Created Agents - Shown as list below */}
             {createdAgents.length > 0 && (
               <div className="created-agents-section">
                 <h3 style={{ marginBottom: '12px', fontSize: '15px', color: 'var(--text-secondary)' }}>Created Agents</h3>
-                <div className="agent-tab-list">
+                <div className="agent-list">
                   {createdAgents.map(agent => (
-                    <button
+                    <div
                       key={agent.id}
-                      className={`agent-tab ${selectedCreatedAgentId === agent.id ? 'active' : ''}`}
+                      className="agent-list-item"
                       onClick={() => {
-                        setSelectedCreatedAgentId(agent.id);
+                        setSelectedAgentForDialog(agent);
+                        refreshAgentInfo(agent.id);
                       }}
                     >
-                      {agent.name}
-                      {agent.hasAuthProfiles && <span className="auth-indicator">🔐</span>}
-                    </button>
+                      <div className="agent-list-item-name">
+                        <span>{agent.name}</span>
+                        {agent.hasAuthProfiles && (
+                          <span className="agent-list-item-indicator">🔐</span>
+                        )}
+                      </div>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 18l6-6-6-6"/>
+                      </svg>
+                    </div>
                   ))}
                 </div>
-
-                {agentInfo && agentInfo.id === selectedCreatedAgentId && (
-                  <div className="agent-details" style={{ marginTop: '16px' }}>
-                    <div className="agent-grid">
-                      {/* Agent Info Card */}
-                      <div className="agent-card">
-                        <h3>Agent Configuration</h3>
-                        <div className="agent-stat">
-                          <div className="stat-row">
-                            <span className="stat-label">Name:</span>
-                            <span className="stat-value">{agentInfo.name}</span>
-                          </div>
-                          <div className="stat-row">
-                            <span className="stat-label">ID:</span>
-                            <span className="stat-value">{agentInfo.id}</span>
-                          </div>
-                          {agentInfo.model && (
-                            <div className="stat-row">
-                              <span className="stat-label">Model:</span>
-                              <span className="stat-value">{agentInfo.model}</span>
-                            </div>
-                          )}
-                          <div className="stat-row">
-                            <span className="stat-label">Config Path:</span>
-                            <span className="stat-value stat-code">{agentInfo.configPath}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Auth Profiles Card */}
-                    <div className="agent-card full-width" style={{ marginTop: '16px' }}>
-                      <h3>Authentication Profiles</h3>
-                      {agentInfo.authProfiles.length === 0 ? (
-                        <p className="help-text">No authentication profiles configured</p>
-                      ) : (
-                        <div className="auth-profiles-list">
-                          {agentInfo.authProfiles.map((profile: AgentAuthProfile, idx: number) => (
-                            <div key={idx} className="auth-profile-card">
-                              <div className="auth-profile-header">
-                                <span className="auth-profile-name">{profile.profileId}</span>
-                                <span className={`badge ${profile.type === 'oauth' ? 'badge-primary' : 'badge-secondary'}`}>
-                                  {profile.type === 'oauth' ? 'OAuth' : 'API Key'}
-                                </span>
-                              </div>
-                              <div className="auth-profile-details">
-                                {profile.provider && (
-                                  <div className="stat-row">
-                                    <span className="stat-label">Provider:</span>
-                                    <span className="stat-value">{profile.provider}</span>
-                                  </div>
-                                )}
-                                {profile.email && (
-                                  <div className="stat-row">
-                                    <span className="stat-label">Email:</span>
-                                    <span className="stat-value">{profile.email}</span>
-                                  </div>
-                                )}
-                                <div className="stat-row">
-                                  <span className="stat-label">Status:</span>
-                                  <span className={`stat-value ${profile.expires && profile.expires < Date.now() ? 'error' : 'success'}`}>
-                                    {profile.expires && profile.expires < Date.now() ? 'Expired' : 'Active'}
-                                  </span>
-                                </div>
-                                {profile.expires && (
-                                  <div className="stat-row">
-                                    <span className="stat-label">Expires:</span>
-                                    <span className="stat-value">{formatExpiry(profile.expires)}</span>
-                                  </div>
-                                )}
-                                {profile.created && (
-                                  <div className="stat-row">
-                                    <span className="stat-label">Created:</span>
-                                    <span className="stat-value">{formatTime(profile.created)}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -1140,6 +1073,16 @@ export function SettingsView() {
           isDestructive={confirmDialog.isDestructive}
           onConfirm={confirmDialog.onConfirm || (() => {})}
           onCancel={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {selectedAgentForDialog && dialogAgentInfo && (
+        <AgentDialog
+          agentInfo={dialogAgentInfo}
+          onClose={() => {
+            setSelectedAgentForDialog(null);
+            setDialogAgentInfo(null);
+          }}
         />
       )}
     </div>
