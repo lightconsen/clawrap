@@ -253,6 +253,55 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* Confirm Dialog */
+.confirm-dialog {
+  background: var(--bg-card);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.confirm-logo {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+}
+
+.confirm-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.confirm-message {
+  padding: 20px;
+  text-align: center;
+}
+
+.confirm-message p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
 /* Input Group */
 .input-group {
   display: flex;

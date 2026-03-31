@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
@@ -33,6 +34,17 @@ export function SettingsView() {
   const [saveStatus, setSaveStatus] = useState<{ success?: boolean; message?: string } | null>(null);
   const [selectedCreatedAgentId, setSelectedCreatedAgentId] = useState<string | null>(null);
   const [mainAgentInfo, setMainAgentInfo] = useState<AgentInfo | null>(null);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDestructive?: boolean;
+    onConfirm?: () => void;
+  } | null>({ show: false, title: '', message: '' });
 
   // Poll memory info when on memory section
   React.useEffect(() => {
@@ -163,12 +175,29 @@ export function SettingsView() {
 
   const handleRemoveModel = async (modelId: string, isPrimary: boolean) => {
     if (isPrimary) {
-      alert(TEXTS.settings.cannotRemovePrimary);
+      setConfirmDialog({
+        show: true,
+        title: 'Cannot Remove',
+        message: TEXTS.settings.cannotRemovePrimary,
+        confirmText: 'OK',
+        cancelText: '',
+        isDestructive: false,
+        onConfirm: () => setConfirmDialog(null),
+      });
       return;
     }
-    if (confirm(`Remove model "${modelId}"?`)) {
-      await removeModel(modelId);
-    }
+    setConfirmDialog({
+      show: true,
+      title: 'Remove Model',
+      message: `Are you sure you want to remove model "${modelId}"?`,
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        await removeModel(modelId);
+        setConfirmDialog(null);
+      },
+    });
   };
 
   const renderOverviewSection = () => (
@@ -492,10 +521,18 @@ export function SettingsView() {
     };
 
     const handleRemoveJob = async (jobId: string) => {
-      if (!confirm('Are you sure you want to remove this cron job?')) {
-        return;
-      }
-      await removeJob(jobId);
+      setConfirmDialog({
+        show: true,
+        title: 'Remove Cron Job',
+        message: 'Are you sure you want to remove this cron job?',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        isDestructive: true,
+        onConfirm: async () => {
+          await removeJob(jobId);
+          setConfirmDialog(null);
+        },
+      });
     };
 
     return (
@@ -1091,6 +1128,18 @@ export function SettingsView() {
             setShowAddModelModal(false);
             setEditingModel(null);
           }}
+        />
+      )}
+
+      {confirmDialog && confirmDialog.show && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          isDestructive={confirmDialog.isDestructive}
+          onConfirm={confirmDialog.onConfirm || (() => {})}
+          onCancel={() => setConfirmDialog(null)}
         />
       )}
     </div>
