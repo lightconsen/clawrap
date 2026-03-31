@@ -518,6 +518,50 @@ export interface TaskReliabilitySettings {
   checkpointEnabled: boolean;
 }
 
+export interface HealthCheckResult {
+  overall: 'healthy' | 'warning' | 'error';
+  checks: HealthCheckItem[];
+  timestamp: number;
+}
+
+export interface HealthCheckItem {
+  id: string;
+  name: string;
+  status: 'pass' | 'warning' | 'error';
+  message: string;
+  canFix: boolean;
+  fixed?: boolean;
+}
+
+export interface NodeJsCheck {
+  installed: boolean;
+  version: string;
+  majorVersion: number;
+  isValid: boolean;
+  message: string;
+}
+
+export interface ConfigCheck {
+  exists: boolean;
+  isValid: boolean;
+  hasModel: boolean;
+  hasApiKey: boolean;
+  message: string;
+}
+
+export interface GatewayCheck {
+  running: boolean;
+  port?: number;
+  reachable: boolean;
+  message: string;
+}
+
+export interface HealthCheckStatus {
+  nodejs: NodeJsCheck;
+  config: ConfigCheck;
+  gateway: GatewayCheck;
+}
+
 export interface PermissionSettings {
   fileAccess: {
     mode: 'readonly' | 'specific_dirs' | 'full_access';

@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings, HealthCheckResult, HealthCheckItem, HealthCheckStatus, NodeJsCheck, ConfigCheck, GatewayCheck } from '../shared/types';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { URL } from 'node:url';
@@ -354,6 +354,15 @@ class OpenClawApp {
 
     ipcMain.handle('task:updateReliabilitySettings', async (_event, settings: TaskReliabilitySettings) => {
       return this.updateTaskReliabilitySettings(settings);
+    });
+
+    // Health Check IPC Handlers
+    ipcMain.handle('health:check', async () => {
+      return this.runHealthCheck();
+    });
+
+    ipcMain.handle('health:fix', async (_event, checkId: string) => {
+      return this.fixHealthIssue(checkId);
     });
   }
 
@@ -1568,6 +1577,296 @@ class OpenClawApp {
     } catch (error) {
       log.error('Failed to update task reliability settings:', error);
       return { success: false, error: (error as Error).message };
+    }
+  }
+
+  private async runHealthCheck(): Promise<HealthCheckResult> {
+    const os = require('os');
+    const path = require('path');
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execPromise = util.promisify(exec);
+
+    const checks: HealthCheckItem[] = [];
+    let overall: 'healthy' | 'warning' | 'error' = 'healthy';
+
+    // Check Node.js
+    try {
+      const nodeCheck: NodeJsCheck = await this.checkNodeJs(execPromise);
+      checks.push({
+        id: 'nodejs',
+        name: 'Node.js Environment',
+        status: nodeCheck.isValid ? 'pass' : nodeCheck.installed ? 'warning' : 'error',
+        message: nodeCheck.message,
+        canFix: !nodeCheck.installed,
+      });
+      if (!nodeCheck.isValid) overall = nodeCheck.installed ? 'warning' : 'error';
+    } catch (error) {
+      checks.push({
+        id: 'nodejs',
+        name: 'Node.js Environment',
+        status: 'error',
+        message: 'Failed to check Node.js',
+        canFix: true,
+      });
+      overall = 'error';
+    }
+
+    // Check configuration
+    try {
+      const configCheck: ConfigCheck = await this.checkConfig();
+      checks.push({
+        id: 'config',
+        name: 'Configuration',
+        status: configCheck.exists && configCheck.isValid ? 'pass' : 'error',
+        message: configCheck.message,
+        canFix: !configCheck.exists || !configCheck.isValid,
+      });
+      if (!configCheck.exists || !configCheck.isValid) overall = 'error';
+    } catch (error) {
+      checks.push({
+        id: 'config',
+        name: 'Configuration',
+        status: 'error',
+        message: 'Failed to check configuration',
+        canFix: true,
+      });
+      overall = 'error';
+    }
+
+    // Check gateway
+    try {
+      const gatewayCheck: GatewayCheck = await this.checkGateway();
+      checks.push({
+        id: 'gateway',
+        name: 'Gateway Service',
+        status: gatewayCheck.running && gatewayCheck.reachable ? 'pass' : 'error',
+        message: gatewayCheck.message,
+        canFix: !gatewayCheck.running,
+      });
+      if (!gatewayCheck.running || !gatewayCheck.reachable) overall = overall === 'error' ? 'error' : 'warning';
+    } catch (error) {
+      checks.push({
+        id: 'gateway',
+        name: 'Gateway Service',
+        status: 'error',
+        message: 'Failed to check gateway',
+        canFix: true,
+      });
+      overall = overall === 'error' ? 'error' : 'warning';
+    }
+
+    return {
+      overall,
+      checks,
+      timestamp: Date.now(),
+    };
+  }
+
+  private async checkNodeJs(execPromise: any): Promise<NodeJsCheck> {
+    try {
+      const { stdout } = await execPromise('node --version');
+      const version = stdout.trim().replace('v', '');
+      const majorVersion = parseInt(version.split('.')[0]);
+      const minVersion = 18;
+      const isValid = majorVersion >= minVersion;
+
+      return {
+        installed: true,
+        version,
+        majorVersion,
+        isValid,
+        message: isValid
+          ? `Node.js ${version} installed`
+          : `Node.js ${version} installed (minimum required: ${minVersion}.x)`,
+      };
+    } catch (error) {
+      return {
+        installed: false,
+        version: '',
+        majorVersion: 0,
+        isValid: false,
+        message: 'Node.js not found',
+      };
+    }
+  }
+
+  private async checkConfig(): Promise<ConfigCheck> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const configPath = path.join(os.homedir(), '.openclaw', 'config.yaml');
+
+      if (!fs.existsSync(configPath)) {
+        return {
+          exists: false,
+          isValid: false,
+          hasModel: false,
+          hasApiKey: false,
+          message: 'Configuration file not found',
+        };
+      }
+
+      const config = this.configManager.getConfig();
+      const hasModel = !!config.settings.model;
+      const hasApiKey = !!config.settings.model?.apiKey;
+
+      return {
+        exists: true,
+        isValid: true,
+        hasModel,
+        hasApiKey,
+        message: hasModel && hasApiKey
+          ? 'Configuration valid'
+          : hasModel
+            ? 'Model configured, API key missing'
+            : 'Model not configured',
+      };
+    } catch (error) {
+      return {
+        exists: true,
+        isValid: false,
+        hasModel: false,
+        hasApiKey: false,
+        message: 'Configuration file is invalid',
+      };
+    }
+  }
+
+  private async checkGateway(): Promise<GatewayCheck> {
+    try {
+      const status = await this.gatewayManager.getStatus();
+      const running = status.running;
+      const port = status.port;
+
+      if (!running) {
+        return {
+          running: false,
+          port: undefined,
+          reachable: false,
+          message: 'Gateway not running',
+        };
+      }
+
+      // Try to reach the gateway
+      const http = require('http');
+      return new Promise((resolve) => {
+        const req = http.get(`http://localhost:${port}/health`, (res: any) => {
+          resolve({
+            running: true,
+            port,
+            reachable: res.statusCode === 200,
+            message: res.statusCode === 200 ? 'Gateway healthy' : `Gateway returned ${res.statusCode}`,
+          });
+        });
+
+        req.on('error', () => {
+          resolve({
+            running: true,
+            port,
+            reachable: false,
+            message: 'Gateway not reachable',
+          });
+        });
+
+        req.setTimeout(5000, () => {
+          req.destroy();
+          resolve({
+            running: true,
+            port,
+            reachable: false,
+            message: 'Gateway timeout',
+          });
+        });
+      });
+    } catch (error) {
+      return {
+        running: false,
+        port: undefined,
+        reachable: false,
+        message: 'Failed to check gateway',
+      };
+    }
+  }
+
+  private async fixHealthIssue(checkId: string): Promise<{ success: boolean; message: string }> {
+    const os = require('os');
+    const path = require('path');
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execPromise = util.promisify(exec);
+
+    try {
+      switch (checkId) {
+        case 'nodejs':
+          // Check if Node.js is installed
+          const nodeCheck = await this.checkNodeJs(execPromise);
+          if (nodeCheck.installed) {
+            return { success: true, message: 'Node.js is already installed' };
+          }
+          return {
+            success: false,
+            message: 'Please install Node.js from https://nodejs.org',
+          };
+
+        case 'config':
+          // Try to initialize config if missing
+          const configPath = path.join(os.homedir(), '.openclaw', 'config.yaml');
+          if (!fs.existsSync(configPath)) {
+            const configDir = path.dirname(configPath);
+            if (!fs.existsSync(configDir)) {
+              fs.mkdirSync(configDir, { recursive: true });
+            }
+            // Create minimal config
+            const minimalConfig = `version: "1.0"
+settings:
+  gateway:
+    port: 8080
+    host: localhost
+  skills:
+    enabled: []
+  tools:
+    enabled: []
+  bypass_channels: []
+`;
+            fs.writeFileSync(configPath, minimalConfig, 'utf-8');
+            return {
+              success: true,
+              message: 'Configuration file created',
+            };
+          }
+          return {
+            success: true,
+            message: 'Configuration file exists, please complete setup in the app',
+          };
+
+        case 'gateway':
+          // Restart the gateway
+          try {
+            await this.gatewayManager.restart();
+            return {
+              success: true,
+              message: 'Gateway restarted successfully',
+            };
+          } catch (error) {
+            return {
+              success: false,
+              message: 'Failed to restart gateway',
+            };
+          }
+
+        default:
+          return {
+            success: false,
+            message: 'Unknown check ID',
+          };
+      }
+    } catch (error) {
+      log.error('Failed to fix health issue:', error);
+      return {
+        success: false,
+        message: (error as Error).message,
+      };
     }
   }
 

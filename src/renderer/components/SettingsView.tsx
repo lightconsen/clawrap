@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken, usePermission, useTask } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken, usePermission, useTask, useHealth } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -21,6 +21,7 @@ export function SettingsView() {
   const { tokenUsage, refreshTokenUsage } = useToken();
   const { permissionInfo, permissionSettings, refreshPermissionInfo, refreshPermissionSettings, updatePermissionSettings } = usePermission();
   const { taskHistory, taskStats, taskReliabilitySettings, refreshTaskHistory, refreshTaskStats, refreshTaskReliabilitySettings, updateTaskReliabilitySettings } = useTask();
+  const { healthCheck, runHealthCheck, fixIssue } = useHealth();
 
   const config = state.config;
 
@@ -42,6 +43,7 @@ export function SettingsView() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [localPermissionSettings, setLocalPermissionSettings] = useState<PermissionSettings | null>(null);
   const [localTaskReliabilitySettings, setLocalTaskReliabilitySettings] = useState<TaskReliabilitySettings | null>(null);
+  const [fixingHealthIssue, setFixingHealthIssue] = useState<string | null>(null);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -90,6 +92,13 @@ export function SettingsView() {
       });
     }
   }, [activeSection, refreshTaskStats, refreshTaskHistory, refreshTaskReliabilitySettings]);
+
+  // Load health check when on overview section
+  React.useEffect(() => {
+    if (activeSection === 'overview') {
+      runHealthCheck();
+    }
+  }, [activeSection, runHealthCheck]);
 
   // Track if we've initialized the agent section
   const agentInitialized = React.useRef(false);
@@ -1615,6 +1624,124 @@ export function SettingsView() {
     );
   };
 
+  const renderHealthSection = () => {
+    const formatTime = (timestamp: number) => {
+      return new Date(timestamp).toLocaleString();
+    };
+
+    const getStatusBadgeClass = (status: string) => {
+      switch (status) {
+        case 'pass':
+          return 'badge-success';
+        case 'warning':
+          return 'badge-warning';
+        case 'error':
+          return 'badge-error';
+        default:
+          return 'badge-secondary';
+      }
+    };
+
+    const handleFixIssue = async (checkId: string) => {
+      setFixingHealthIssue(checkId);
+      try {
+        await fixIssue(checkId);
+      } finally {
+        setFixingHealthIssue(null);
+      }
+    };
+
+    return (
+      <div className="health-section">
+        <div className="section-header">
+          <h2>Health Check</h2>
+          <p className="subtitle">System health status and one-click fixes</p>
+        </div>
+
+        {!healthCheck ? (
+          <div className="loading-state">Running health checks...</div>
+        ) : (
+          <>
+            {/* Overall Status */}
+            <div className={`health-overall-status ${healthCheck.overall}`}>
+              <div className="health-status-icon">
+                {healthCheck.overall === 'healthy' ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                ) : healthCheck.overall === 'warning' ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                ) : (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                )}
+              </div>
+              <div className="health-status-info">
+                <h3>Overall Status: {healthCheck.overall}</h3>
+                <p className="subtitle">Last checked: {formatTime(healthCheck.timestamp)}</p>
+              </div>
+            </div>
+
+            {/* Individual Checks */}
+            <div className="health-checks-list">
+              {healthCheck.checks.map((check) => (
+                <div key={check.id} className={`health-check-item ${check.status}`}>
+                  <div className="health-check-header">
+                    <div className="health-check-name">
+                      <span className="health-check-icon">
+                        {check.status === 'pass' ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        ) : check.status === 'warning' ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                          </svg>
+                        )}
+                      </span>
+                      <span>{check.name}</span>
+                      <span className={`badge ${getStatusBadgeClass(check.status)}`}>{check.status}</span>
+                    </div>
+                    {check.canFix && check.status !== 'pass' && (
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => handleFixIssue(check.id)}
+                        disabled={fixingHealthIssue === check.id}
+                      >
+                        {fixingHealthIssue === check.id ? 'Fixing...' : 'Fix Issue'}
+                      </button>
+                    )}
+                  </div>
+                  <p className="health-check-message">{check.message}</p>
+                </div>
+              ))}
+            </div>
+
+            <button className="btn" onClick={runHealthCheck} style={{ marginTop: '24px' }}>
+              Re-run Health Check
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="settings-view">
       <div className="settings-container">
@@ -1628,7 +1755,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['overview', 'usage', 'permissions', 'tasks', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
+            {(['overview', 'usage', 'permissions', 'tasks', 'health', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -1645,6 +1772,7 @@ export function SettingsView() {
           {activeSection === 'usage' && renderUsageSection()}
           {activeSection === 'permissions' && renderPermissionsSection()}
           {activeSection === 'tasks' && renderTasksSection()}
+          {activeSection === 'health' && renderHealthSection()}
           {activeSection === 'memory' && renderMemorySection()}
           {activeSection === 'agent' && renderAgentSection()}
           {activeSection === 'crons' && renderCronSection()}

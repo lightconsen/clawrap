@@ -1,5 +1,5 @@
 // Type-safe IPC wrapper for React components
-import { ModelConfig, OpenClawConfig, GatewayStatus, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '@shared/types';
+import { ModelConfig, OpenClawConfig, GatewayStatus, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings, HealthCheckResult } from '@shared/types';
 
 export const ipc = {
   // Config
@@ -77,4 +77,8 @@ export const ipc = {
   getTaskStats: (): Promise<TaskStats> => window.electronAPI.getTaskStats(),
   getTaskReliabilitySettings: (): Promise<TaskReliabilitySettings> => window.electronAPI.getTaskReliabilitySettings(),
   updateTaskReliabilitySettings: (settings: TaskReliabilitySettings): Promise<{ success: boolean; error?: string }> => window.electronAPI.updateTaskReliabilitySettings(settings),
+
+  // Health Check
+  runHealthCheck: (): Promise<HealthCheckResult> => window.electronAPI.runHealthCheck(),
+  fixHealthIssue: (checkId: string): Promise<{ success: boolean; message?: string }> => window.electronAPI.fixHealthIssue(checkId),
 };

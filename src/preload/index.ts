@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings, HealthCheckResult } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -96,6 +96,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTaskStats: (): Promise<TaskStats> => debugInvoke('task:getStats'),
   getTaskReliabilitySettings: (): Promise<TaskReliabilitySettings> => debugInvoke('task:getReliabilitySettings'),
   updateTaskReliabilitySettings: (settings: TaskReliabilitySettings): Promise<{ success: boolean; error?: string }> => debugInvoke('task:updateReliabilitySettings', settings),
+
+  // Health Check API
+  runHealthCheck: (): Promise<HealthCheckResult> => debugInvoke('health:check'),
+  fixHealthIssue: (checkId: string): Promise<{ success: boolean; message: string }> => debugInvoke('health:fix', checkId),
 });
 
 // Type declarations for TypeScript
@@ -142,6 +146,9 @@ declare global {
       // Personality API
       getPersonalityFiles: () => Promise<{ files: PersonalityFile[] }>;
       savePersonalityFile: (name: string, content: string) => Promise<{ success: boolean; error?: string }>;
+      // Health Check API
+      runHealthCheck: () => Promise<HealthCheckResult>;
+      fixHealthIssue: (checkId: string) => Promise<{ success: boolean; message?: string }>;
     };
   }
 }

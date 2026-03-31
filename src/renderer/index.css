@@ -2081,3 +2081,134 @@ body {
   color: var(--success);
 }
 
+/* Health Check Section */
+.health-section {
+  max-width: 900px;
+}
+
+.health-overall-status {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.health-overall-status.healthy {
+  border-color: var(--success);
+  background: rgba(166, 227, 161, 0.1);
+}
+
+.health-overall-status.warning {
+  border-color: var(--warning);
+  background: rgba(250, 179, 135, 0.1);
+}
+
+.health-overall-status.error {
+  border-color: var(--error);
+  background: rgba(243, 139, 168, 0.1);
+}
+
+.health-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+}
+
+.health-overall-status.healthy .health-status-icon {
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--success);
+}
+
+.health-overall-status.warning .health-status-icon {
+  background: rgba(250, 179, 135, 0.2);
+  color: var(--warning);
+}
+
+.health-overall-status.error .health-status-icon {
+  background: rgba(243, 139, 168, 0.2);
+  color: var(--error);
+}
+
+.health-status-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.health-status-info h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.health-status-info .subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.health-checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.health-check-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.health-check-item.pass {
+  border-left: 4px solid var(--success);
+}
+
+.health-check-item.warning {
+  border-left: 4px solid var(--warning);
+}
+
+.health-check-item.error {
+  border-left: 4px solid var(--error);
+}
+
+.health-check-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.health-check-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.health-check-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.health-check-message {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.badge-warning {
+  background: rgba(250, 179, 135, 0.2);
+  color: var(--warning);
+}
+
+

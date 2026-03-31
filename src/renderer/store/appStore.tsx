@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings, HealthCheckResult } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -26,6 +26,7 @@ interface AppState {
   taskHistory: TaskHistory[];
   taskStats: TaskStats | null;
   taskReliabilitySettings: TaskReliabilitySettings | null;
+  healthCheck: HealthCheckResult | null;
 }
 
 type Action =
@@ -50,7 +51,8 @@ type Action =
   | { type: 'SET_PERMISSION_SETTINGS'; payload: PermissionSettings }
   | { type: 'SET_TASK_HISTORY'; payload: TaskHistory[] }
   | { type: 'SET_TASK_STATS'; payload: TaskStats }
-  | { type: 'SET_TASK_RELIABILITY_SETTINGS'; payload: TaskReliabilitySettings };
+  | { type: 'SET_TASK_RELIABILITY_SETTINGS'; payload: TaskReliabilitySettings }
+  | { type: 'SET_HEALTH_CHECK'; payload: HealthCheckResult };
 
 const initialState: AppState = {
   view: 'install',
@@ -74,6 +76,7 @@ const initialState: AppState = {
   taskHistory: [],
   taskStats: null,
   taskReliabilitySettings: null,
+  healthCheck: null,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -132,6 +135,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, taskStats: action.payload };
     case 'SET_TASK_RELIABILITY_SETTINGS':
       return { ...state, taskReliabilitySettings: action.payload };
+    case 'SET_HEALTH_CHECK':
+      return { ...state, healthCheck: action.payload };
     default:
       return state;
   }
@@ -512,5 +517,29 @@ export function useTask() {
     refreshTaskStats,
     refreshTaskReliabilitySettings,
     updateTaskReliabilitySettings,
+  };
+}
+
+export function useHealth() {
+  const { state, dispatch } = useApp();
+
+  const runHealthCheck = useCallback(async () => {
+    const result = await ipc.runHealthCheck();
+    dispatch({ type: 'SET_HEALTH_CHECK', payload: result });
+    return result;
+  }, [dispatch]);
+
+  const fixIssue = useCallback(async (checkId: string) => {
+    const result = await ipc.fixHealthIssue(checkId);
+    if (result.success) {
+      await runHealthCheck();
+    }
+    return result;
+  }, [dispatch, runHealthCheck]);
+
+  return {
+    healthCheck: state.healthCheck,
+    runHealthCheck,
+    fixIssue,
   };
 }
