@@ -480,6 +480,44 @@ export interface CommandExecLog {
   reason?: string;
 }
 
+export interface TaskHistory {
+  id: string;
+  name: string;
+  type: 'cron' | 'manual' | 'scheduled';
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  output?: string;
+  error?: string;
+  retryCount: number;
+  sourceJobId?: string;
+}
+
+export interface TaskStats {
+  totalTasks: number;
+  completedTasks: number;
+  failedTasks: number;
+  runningTasks: number;
+  averageDuration: number;
+  failureRate: number;
+  recentFailures: TaskHistory[];
+}
+
+export interface RetryConfig {
+  enabled: boolean;
+  maxRetries: number;
+  retryDelay: number; // milliseconds
+  backoffMultiplier: number;
+}
+
+export interface TaskReliabilitySettings {
+  autoRetry: RetryConfig;
+  timeout: number; // milliseconds, 0 = no timeout
+  notifyOnFailure: boolean;
+  checkpointEnabled: boolean;
+}
+
 export interface PermissionSettings {
   fileAccess: {
     mode: 'readonly' | 'specific_dirs' | 'full_access';

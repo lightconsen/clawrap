@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken, usePermission } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken, usePermission, useTask } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AgentDialog } from './AgentDialog';
-import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile, PermissionSettings } from '@shared/types';
+import { ModelConfig, PersonalityFile, AgentSummary, AgentInfo, AgentAuthProfile, PermissionSettings, TaskReliabilitySettings } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export function SettingsView() {
@@ -20,6 +20,7 @@ export function SettingsView() {
   const { agentInfo, agentList, refreshAgentList, refreshAgentInfo } = useAgent();
   const { tokenUsage, refreshTokenUsage } = useToken();
   const { permissionInfo, permissionSettings, refreshPermissionInfo, refreshPermissionSettings, updatePermissionSettings } = usePermission();
+  const { taskHistory, taskStats, taskReliabilitySettings, refreshTaskHistory, refreshTaskStats, refreshTaskReliabilitySettings, updateTaskReliabilitySettings } = useTask();
 
   const config = state.config;
 
@@ -40,6 +41,7 @@ export function SettingsView() {
   const [dialogAgentInfo, setDialogAgentInfo] = useState<AgentInfo | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [localPermissionSettings, setLocalPermissionSettings] = useState<PermissionSettings | null>(null);
+  const [localTaskReliabilitySettings, setLocalTaskReliabilitySettings] = useState<TaskReliabilitySettings | null>(null);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -77,6 +79,17 @@ export function SettingsView() {
       refreshPermissionInfo();
     }
   }, [activeSection, refreshPermissionSettings, refreshPermissionInfo]);
+
+  // Load task data when on tasks section
+  React.useEffect(() => {
+    if (activeSection === 'tasks') {
+      refreshTaskStats();
+      refreshTaskHistory();
+      refreshTaskReliabilitySettings().then((settings) => {
+        setLocalTaskReliabilitySettings(settings);
+      });
+    }
+  }, [activeSection, refreshTaskStats, refreshTaskHistory, refreshTaskReliabilitySettings]);
 
   // Track if we've initialized the agent section
   const agentInitialized = React.useRef(false);
@@ -813,6 +826,272 @@ export function SettingsView() {
     );
   };
 
+  const renderTasksSection = () => {
+    const formatDuration = (ms?: number) => {
+      if (!ms) return '-';
+      const seconds = (ms / 1000).toFixed(1);
+      return `${seconds}s`;
+    };
+
+    const formatTime = (timestamp?: number) => {
+      if (!timestamp) return '-';
+      return new Date(timestamp).toLocaleString();
+    };
+
+    const handleSaveReliabilitySettings = async () => {
+      if (!localTaskReliabilitySettings) return;
+      setSavingSettings(true);
+      try {
+        await updateTaskReliabilitySettings(localTaskReliabilitySettings);
+      } finally {
+        setSavingSettings(false);
+      }
+    };
+
+    return (
+      <div className="tasks-section">
+        <div className="section-header">
+          <h2>Task Reliability</h2>
+          <p className="subtitle">Monitor task history and configure reliability settings</p>
+        </div>
+
+        {/* Task Statistics */}
+        {taskStats && (
+          <div className="task-stats-dashboard">
+            <div className="task-stat-card">
+              <h3>Overview</h3>
+              <div className="task-stat">
+                <div className="stat-row">
+                  <span className="stat-label">Total Tasks:</span>
+                  <span className="stat-value">{taskStats.totalTasks}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Completed:</span>
+                  <span className="stat-value" style={{ color: 'var(--success)' }}>{taskStats.completedTasks}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Failed:</span>
+                  <span className="stat-value" style={{ color: 'var(--error)' }}>{taskStats.failedTasks}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Running:</span>
+                  <span className="stat-value">{taskStats.runningTasks}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="task-stat-card">
+              <h3>Performance</h3>
+              <div className="task-stat">
+                <div className="stat-row">
+                  <span className="stat-label">Avg Duration:</span>
+                  <span className="stat-value">{formatDuration(taskStats.averageDuration)}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Failure Rate:</span>
+                  <span className="stat-value" style={{ color: taskStats.failureRate > 20 ? 'var(--error)' : 'var(--success)' }}>
+                    {taskStats.failureRate.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Failures */}
+        {taskStats && taskStats.recentFailures.length > 0 && (
+          <div className="task-section-block">
+            <h3>Recent Failures</h3>
+            <div className="task-history-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Task Name</th>
+                    <th>Type</th>
+                    <th>Start Time</th>
+                    <th>Duration</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskStats.recentFailures.map((task) => (
+                    <tr key={task.id}>
+                      <td>{task.name}</td>
+                      <td>{task.type}</td>
+                      <td>{formatTime(task.startTime)}</td>
+                      <td>{formatDuration(task.duration)}</td>
+                      <td style={{ color: 'var(--error)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {task.error || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Task History */}
+        <div className="task-section-block">
+          <h3>Task History</h3>
+          {taskHistory.length === 0 ? (
+            <p className="help-text">No task history available</p>
+          ) : (
+            <div className="task-history-list">
+              {taskHistory.slice().reverse().map((task) => (
+                <div key={task.id} className="task-history-item">
+                  <div className="task-history-header">
+                    <div className="task-history-name">
+                      <span>{task.name}</span>
+                      <span className={`badge ${
+                        task.status === 'completed' ? 'badge-success' :
+                        task.status === 'failed' ? 'badge-error' :
+                        task.status === 'running' ? 'badge-running' : 'badge-secondary'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <span className="task-history-type">{task.type}</span>
+                  </div>
+                  <div className="task-history-details">
+                    <span>Start: {formatTime(task.startTime)}</span>
+                    <span>Duration: {formatDuration(task.duration)}</span>
+                    {task.retryCount > 0 && <span>Retries: {task.retryCount}</span>}
+                  </div>
+                  {task.error && <div className="task-history-error">{task.error}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reliability Settings */}
+        {localTaskReliabilitySettings && (
+          <div className="task-section-block">
+            <h3>Reliability Settings</h3>
+
+            <div className="form-group">
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={localTaskReliabilitySettings.autoRetry.enabled}
+                  onChange={(e) => setLocalTaskReliabilitySettings({
+                    ...localTaskReliabilitySettings,
+                    autoRetry: { ...localTaskReliabilitySettings.autoRetry, enabled: e.target.checked },
+                  })}
+                />
+                <span className="toggle-slider"></span>
+                <span style={{ marginLeft: '12px' }}>Enable automatic retry on failure</span>
+              </label>
+            </div>
+
+            {localTaskReliabilitySettings.autoRetry.enabled && (
+              <>
+                <div className="form-group">
+                  <label>Max Retries</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={localTaskReliabilitySettings.autoRetry.maxRetries}
+                    onChange={(e) => setLocalTaskReliabilitySettings({
+                      ...localTaskReliabilitySettings,
+                      autoRetry: { ...localTaskReliabilitySettings.autoRetry, maxRetries: parseInt(e.target.value) || 0 },
+                    })}
+                    min={0}
+                    max={10}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Retry Delay (ms)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={localTaskReliabilitySettings.autoRetry.retryDelay}
+                    onChange={(e) => setLocalTaskReliabilitySettings({
+                      ...localTaskReliabilitySettings,
+                      autoRetry: { ...localTaskReliabilitySettings.autoRetry, retryDelay: parseInt(e.target.value) || 0 },
+                    })}
+                    min={0}
+                    step={1000}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Backoff Multiplier</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={localTaskReliabilitySettings.autoRetry.backoffMultiplier}
+                    onChange={(e) => setLocalTaskReliabilitySettings({
+                      ...localTaskReliabilitySettings,
+                      autoRetry: { ...localTaskReliabilitySettings.autoRetry, backoffMultiplier: parseFloat(e.target.value) || 1 },
+                    })}
+                    min={1}
+                    max={5}
+                    step={0.5}
+                  />
+                  <p className="help-text" style={{ marginTop: '8px' }}>
+                    Each retry will wait {localTaskReliabilitySettings.autoRetry.backoffMultiplier}x longer than the previous
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Task Timeout (ms, 0 = no timeout)</label>
+              <input
+                type="number"
+                className="form-input"
+                value={localTaskReliabilitySettings.timeout}
+                onChange={(e) => setLocalTaskReliabilitySettings({
+                  ...localTaskReliabilitySettings,
+                  timeout: parseInt(e.target.value) || 0,
+                })}
+                min={0}
+                step={60000}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={localTaskReliabilitySettings.notifyOnFailure}
+                  onChange={(e) => setLocalTaskReliabilitySettings({
+                    ...localTaskReliabilitySettings,
+                    notifyOnFailure: e.target.checked,
+                  })}
+                />
+                <span className="toggle-slider"></span>
+                <span style={{ marginLeft: '12px' }}>Notify on task failure</span>
+              </label>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={localTaskReliabilitySettings.checkpointEnabled}
+                  onChange={(e) => setLocalTaskReliabilitySettings({
+                    ...localTaskReliabilitySettings,
+                    checkpointEnabled: e.target.checked,
+                  })}
+                />
+                <span className="toggle-slider"></span>
+                <span style={{ marginLeft: '12px' }}>Enable checkpoint for long-running tasks (experimental)</span>
+              </label>
+            </div>
+
+            <button className="btn" onClick={handleSaveReliabilitySettings} disabled={savingSettings} style={{ marginTop: '24px' }}>
+              {savingSettings ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderGatewaySection = () => (
     <div className="gateway-section">
       <div className="section-header">
@@ -1349,7 +1628,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['overview', 'usage', 'permissions', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
+            {(['overview', 'usage', 'permissions', 'tasks', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -1365,6 +1644,7 @@ export function SettingsView() {
           {activeSection === 'overview' && renderOverviewSection()}
           {activeSection === 'usage' && renderUsageSection()}
           {activeSection === 'permissions' && renderPermissionsSection()}
+          {activeSection === 'tasks' && renderTasksSection()}
           {activeSection === 'memory' && renderMemorySection()}
           {activeSection === 'agent' && renderAgentSection()}
           {activeSection === 'crons' && renderCronSection()}

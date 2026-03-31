@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '../shared/types';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { URL } from 'node:url';
@@ -337,6 +337,23 @@ class OpenClawApp {
 
     ipcMain.handle('permission:updateSettings', async (_event, settings: PermissionSettings) => {
       return this.updatePermissionSettings(settings);
+    });
+
+    // Task Reliability IPC Handlers
+    ipcMain.handle('task:getHistory', async () => {
+      return this.getTaskHistory();
+    });
+
+    ipcMain.handle('task:getStats', async () => {
+      return this.getTaskStats();
+    });
+
+    ipcMain.handle('task:getReliabilitySettings', async () => {
+      return this.getTaskReliabilitySettings();
+    });
+
+    ipcMain.handle('task:updateReliabilitySettings', async (_event, settings: TaskReliabilitySettings) => {
+      return this.updateTaskReliabilitySettings(settings);
     });
   }
 
@@ -1414,6 +1431,142 @@ class OpenClawApp {
       return { success: true };
     } catch (error) {
       log.error('Failed to update permission settings:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  private async getTaskHistory(): Promise<{ history: TaskHistory[] }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const taskHistoryPath = path.join(os.homedir(), '.openclaw', 'task-history.json');
+
+      if (!fs.existsSync(taskHistoryPath)) {
+        return { history: [] };
+      }
+
+      const data = JSON.parse(fs.readFileSync(taskHistoryPath, 'utf-8'));
+      // Return last 50 tasks
+      return { history: (data.history || []).slice(-50) };
+    } catch (error) {
+      log.error('Failed to get task history:', error);
+      return { history: [] };
+    }
+  }
+
+  private async getTaskStats(): Promise<TaskStats> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const taskHistoryPath = path.join(os.homedir(), '.openclaw', 'task-history.json');
+
+      const defaultStats: TaskStats = {
+        totalTasks: 0,
+        completedTasks: 0,
+        failedTasks: 0,
+        runningTasks: 0,
+        averageDuration: 0,
+        failureRate: 0,
+        recentFailures: [],
+      };
+
+      if (!fs.existsSync(taskHistoryPath)) {
+        return defaultStats;
+      }
+
+      const data = JSON.parse(fs.readFileSync(taskHistoryPath, 'utf-8'));
+      const history: TaskHistory[] = data.history || [];
+
+      if (history.length === 0) {
+        return defaultStats;
+      }
+
+      const completedTasks = history.filter(t => t.status === 'completed').length;
+      const failedTasks = history.filter(t => t.status === 'failed').length;
+      const runningTasks = history.filter(t => t.status === 'running').length;
+      const totalTasks = history.length;
+
+      const durations = history.filter(t => t.duration).map(t => t.duration!) as number[];
+      const averageDuration = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+
+      const failureRate = totalTasks > 0 ? (failedTasks / totalTasks) * 100 : 0;
+
+      const recentFailures = history.filter(t => t.status === 'failed').slice(-5);
+
+      return {
+        totalTasks,
+        completedTasks,
+        failedTasks,
+        runningTasks,
+        averageDuration,
+        failureRate,
+        recentFailures,
+      };
+    } catch (error) {
+      log.error('Failed to get task stats:', error);
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        failedTasks: 0,
+        runningTasks: 0,
+        averageDuration: 0,
+        failureRate: 0,
+        recentFailures: [],
+      };
+    }
+  }
+
+  private async getTaskReliabilitySettings(): Promise<TaskReliabilitySettings> {
+    const os = require('os');
+    const path = require('path');
+    const settingsPath = path.join(os.homedir(), '.openclaw', 'task-reliability.json');
+
+    const defaultSettings: TaskReliabilitySettings = {
+      autoRetry: {
+        enabled: true,
+        maxRetries: 3,
+        retryDelay: 5000,
+        backoffMultiplier: 2,
+      },
+      timeout: 30 * 60 * 1000, // 30 minutes
+      notifyOnFailure: true,
+      checkpointEnabled: false,
+    };
+
+    try {
+      if (fs.existsSync(settingsPath)) {
+        const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        return {
+          autoRetry: { ...defaultSettings.autoRetry, ...saved.autoRetry },
+          timeout: saved.timeout ?? defaultSettings.timeout,
+          notifyOnFailure: saved.notifyOnFailure ?? defaultSettings.notifyOnFailure,
+          checkpointEnabled: saved.checkpointEnabled ?? defaultSettings.checkpointEnabled,
+        };
+      }
+      return defaultSettings;
+    } catch (error) {
+      log.error('Failed to get task reliability settings:', error);
+      return defaultSettings;
+    }
+  }
+
+  private async updateTaskReliabilitySettings(settings: TaskReliabilitySettings): Promise<{ success: boolean; error?: string }> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const settingsPath = path.join(os.homedir(), '.openclaw', 'task-reliability.json');
+
+      // Ensure directory exists
+      const settingsDir = path.dirname(settingsPath);
+      if (!fs.existsSync(settingsDir)) {
+        fs.mkdirSync(settingsDir, { recursive: true });
+      }
+
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+      log.info('Task reliability settings updated');
+      return { success: true };
+    } catch (error) {
+      log.error('Failed to update task reliability settings:', error);
       return { success: false, error: (error as Error).message };
     }
   }

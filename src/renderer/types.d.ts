@@ -1,5 +1,5 @@
 /// <reference path="./assets.d.ts" />
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '../shared/types';
 
 export interface ElectronAPI {
   // Config API
@@ -75,6 +75,12 @@ export interface ElectronAPI {
   getPermissionInfo: () => Promise<PermissionInfo>;
   getPermissionSettings: () => Promise<PermissionSettings>;
   updatePermissionSettings: (settings: PermissionSettings) => Promise<{ success: boolean; error?: string }>;
+
+  // Task Reliability API
+  getTaskHistory: () => Promise<{ history: TaskHistory[] }>;
+  getTaskStats: () => Promise<TaskStats>;
+  getTaskReliabilitySettings: () => Promise<TaskReliabilitySettings>;
+  updateTaskReliabilitySettings: (settings: TaskReliabilitySettings) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

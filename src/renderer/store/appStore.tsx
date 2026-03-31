@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '@shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '@shared/types';
 import { ipc } from '../lib/ipc';
 
 export type AppView = 'install' | 'setup' | 'terminal' | 'settings';
@@ -23,6 +23,9 @@ interface AppState {
   tokenUsage: TokenUsageInfo | null;
   permissionInfo: PermissionInfo | null;
   permissionSettings: PermissionSettings | null;
+  taskHistory: TaskHistory[];
+  taskStats: TaskStats | null;
+  taskReliabilitySettings: TaskReliabilitySettings | null;
 }
 
 type Action =
@@ -44,7 +47,10 @@ type Action =
   | { type: 'SET_AGENT_LIST'; payload: AgentSummary[] }
   | { type: 'SET_TOKEN_USAGE'; payload: TokenUsageInfo }
   | { type: 'SET_PERMISSION_INFO'; payload: PermissionInfo }
-  | { type: 'SET_PERMISSION_SETTINGS'; payload: PermissionSettings };
+  | { type: 'SET_PERMISSION_SETTINGS'; payload: PermissionSettings }
+  | { type: 'SET_TASK_HISTORY'; payload: TaskHistory[] }
+  | { type: 'SET_TASK_STATS'; payload: TaskStats }
+  | { type: 'SET_TASK_RELIABILITY_SETTINGS'; payload: TaskReliabilitySettings };
 
 const initialState: AppState = {
   view: 'install',
@@ -65,6 +71,9 @@ const initialState: AppState = {
   tokenUsage: null,
   permissionInfo: null,
   permissionSettings: null,
+  taskHistory: [],
+  taskStats: null,
+  taskReliabilitySettings: null,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -117,6 +126,12 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, permissionInfo: action.payload };
     case 'SET_PERMISSION_SETTINGS':
       return { ...state, permissionSettings: action.payload };
+    case 'SET_TASK_HISTORY':
+      return { ...state, taskHistory: action.payload };
+    case 'SET_TASK_STATS':
+      return { ...state, taskStats: action.payload };
+    case 'SET_TASK_RELIABILITY_SETTINGS':
+      return { ...state, taskReliabilitySettings: action.payload };
     default:
       return state;
   }
@@ -457,5 +472,45 @@ export function usePermission() {
     refreshPermissionInfo,
     refreshPermissionSettings,
     updatePermissionSettings,
+  };
+}
+
+export function useTask() {
+  const { state, dispatch } = useApp();
+
+  const refreshTaskHistory = useCallback(async () => {
+    const result = await ipc.getTaskHistory();
+    dispatch({ type: 'SET_TASK_HISTORY', payload: result.history });
+    return result.history;
+  }, [dispatch]);
+
+  const refreshTaskStats = useCallback(async () => {
+    const result = await ipc.getTaskStats();
+    dispatch({ type: 'SET_TASK_STATS', payload: result });
+    return result;
+  }, [dispatch]);
+
+  const refreshTaskReliabilitySettings = useCallback(async () => {
+    const result = await ipc.getTaskReliabilitySettings();
+    dispatch({ type: 'SET_TASK_RELIABILITY_SETTINGS', payload: result });
+    return result;
+  }, [dispatch]);
+
+  const updateTaskReliabilitySettings = useCallback(async (settings: TaskReliabilitySettings) => {
+    const result = await ipc.updateTaskReliabilitySettings(settings);
+    if (result.success) {
+      await refreshTaskReliabilitySettings();
+    }
+    return result;
+  }, [dispatch, refreshTaskReliabilitySettings]);
+
+  return {
+    taskHistory: state.taskHistory,
+    taskStats: state.taskStats,
+    taskReliabilitySettings: state.taskReliabilitySettings,
+    refreshTaskHistory,
+    refreshTaskStats,
+    refreshTaskReliabilitySettings,
+    updateTaskReliabilitySettings,
   };
 }

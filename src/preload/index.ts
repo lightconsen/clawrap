@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo, PermissionInfo, PermissionSettings, TaskHistory, TaskStats, TaskReliabilitySettings } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -90,6 +90,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPermissionInfo: (): Promise<PermissionInfo> => debugInvoke('permission:getInfo'),
   getPermissionSettings: (): Promise<PermissionSettings> => debugInvoke('permission:getSettings'),
   updatePermissionSettings: (settings: PermissionSettings): Promise<{ success: boolean; error?: string }> => debugInvoke('permission:updateSettings', settings),
+
+  // Task Reliability API
+  getTaskHistory: (): Promise<{ history: TaskHistory[] }> => debugInvoke('task:getHistory'),
+  getTaskStats: (): Promise<TaskStats> => debugInvoke('task:getStats'),
+  getTaskReliabilitySettings: (): Promise<TaskReliabilitySettings> => debugInvoke('task:getReliabilitySettings'),
+  updateTaskReliabilitySettings: (settings: TaskReliabilitySettings): Promise<{ success: boolean; error?: string }> => debugInvoke('task:updateReliabilitySettings', settings),
 });
 
 // Type declarations for TypeScript
