@@ -396,3 +396,33 @@ export interface PersonalityFile {
   name: string;
   content: string;
 }
+
+export interface TokenUsageInfo {
+  totalTokens: number;
+  totalCost: number;
+  currency: string;
+  period: {
+    start: number;
+    end: number;
+  };
+  byModel: TokenUsageByModel[];
+  dailyUsage: DailyTokenUsage[];
+}
+
+export interface TokenUsageByModel {
+  modelId: string;
+  modelName: string;
+  provider: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+}
+
+export interface DailyTokenUsage {
+  date: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent } from '../store/appStore';
+import { useApp, useSetView, useModels, useGateway, useSkills, useTools, useChannels, useCron, useMemory, useAgent, useToken } from '../store/appStore';
 import { TEXTS } from '../lib/texts';
 import { AddModelModal } from './AddModelModal';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -18,6 +18,7 @@ export function SettingsView() {
   const { cronJobs, cronLogs, refreshCronJobs, refreshCronLogs, runJob, toggleJob, removeJob } = useCron();
   const { memoryInfo, refreshMemory } = useMemory();
   const { agentInfo, agentList, refreshAgentList, refreshAgentInfo } = useAgent();
+  const { tokenUsage, refreshTokenUsage } = useToken();
 
   const config = state.config;
 
@@ -56,6 +57,13 @@ export function SettingsView() {
       return () => clearInterval(interval);
     }
   }, [activeSection, refreshMemory]);
+
+  // Poll token usage when on overview section
+  React.useEffect(() => {
+    if (activeSection === 'overview') {
+      refreshTokenUsage();
+    }
+  }, [activeSection, refreshTokenUsage]);
 
   // Track if we've initialized the agent section
   const agentInitialized = React.useRef(false);
@@ -330,6 +338,27 @@ export function SettingsView() {
             </div>
           </div>
         </div>
+
+        {/* Token Usage */}
+        <div className="overview-card">
+          <h3>Token Usage</h3>
+          <div className="overview-stat">
+            {tokenUsage ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">Total Tokens:</span>
+                  <span className="stat-value">{tokenUsage.totalTokens.toLocaleString()}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Est. Cost:</span>
+                  <span className="stat-value">${tokenUsage.totalCost.toFixed(4)}</span>
+                </div>
+              </>
+            ) : (
+              <p className="help-text">Loading...</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -479,6 +508,103 @@ export function SettingsView() {
           );
         })}
       </div>
+    </div>
+  );
+
+  const renderUsageSection = () => (
+    <div className="usage-section">
+      <div className="section-header">
+        <h2>Token Usage</h2>
+        <p className="subtitle">Monitor token consumption and costs</p>
+      </div>
+
+      {!tokenUsage ? (
+        <div className="loading-state">Loading usage information...</div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="usage-summary-grid">
+            <div className="usage-card">
+              <h3>Total Tokens</h3>
+              <div className="usage-stat">{tokenUsage.totalTokens.toLocaleString()}</div>
+            </div>
+            <div className="usage-card">
+              <h3>Estimated Cost</h3>
+              <div className="usage-stat">${tokenUsage.totalCost.toFixed(4)}</div>
+            </div>
+            <div className="usage-card">
+              <h3>Period</h3>
+              <div className="usage-stat">
+                {new Date(tokenUsage.period.start).toLocaleDateString()} - {new Date(tokenUsage.period.end).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+
+          {/* By Model Breakdown */}
+          {tokenUsage.byModel && tokenUsage.byModel.length > 0 && (
+            <div className="usage-section-block">
+              <h3>Cost by Model</h3>
+              <div className="usage-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Provider</th>
+                      <th>Input Tokens</th>
+                      <th>Output Tokens</th>
+                      <th>Total Tokens</th>
+                      <th>Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tokenUsage.byModel.map((byModel, idx) => (
+                      <tr key={idx}>
+                        <td>{byModel.modelName}</td>
+                        <td>{byModel.provider}</td>
+                        <td>{byModel.inputTokens.toLocaleString()}</td>
+                        <td>{byModel.outputTokens.toLocaleString()}</td>
+                        <td>{byModel.totalTokens.toLocaleString()}</td>
+                        <td>${byModel.cost.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Daily Usage */}
+          {tokenUsage.dailyUsage && tokenUsage.dailyUsage.length > 0 && (
+            <div className="usage-section-block">
+              <h3>Daily Usage</h3>
+              <div className="usage-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Input Tokens</th>
+                      <th>Output Tokens</th>
+                      <th>Total Tokens</th>
+                      <th>Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tokenUsage.dailyUsage.map((day, idx) => (
+                      <tr key={idx}>
+                        <td>{new Date(day.date).toLocaleDateString()}</td>
+                        <td>{day.inputTokens.toLocaleString()}</td>
+                        <td>{day.outputTokens.toLocaleString()}</td>
+                        <td>{day.totalTokens.toLocaleString()}</td>
+                        <td>${day.cost.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 
@@ -1018,7 +1144,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['overview', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
+            {(['overview', 'usage', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -1032,6 +1158,7 @@ export function SettingsView() {
 
         <div className="settings-content">
           {activeSection === 'overview' && renderOverviewSection()}
+          {activeSection === 'usage' && renderUsageSection()}
           {activeSection === 'memory' && renderMemorySection()}
           {activeSection === 'agent' && renderAgentSection()}
           {activeSection === 'crons' && renderCronSection()}

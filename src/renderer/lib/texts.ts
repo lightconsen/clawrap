@@ -73,6 +73,7 @@ export const TEXTS = {
   settings: {
     title: 'Settings',
     overview: 'Overview',
+    usage: 'Usage',
     memory: 'Memory',
     agent: 'Agent',
     crons: 'Crons',

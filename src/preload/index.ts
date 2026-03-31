@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary } from '../shared/types';
+import { OpenClawConfig, GatewayStatus, ModelConfig, CronJob, CronLog, MemoryInfo, AgentInfo, AgentAuthProfile, PersonalityFile, AgentSummary, TokenUsageInfo } from '../shared/types';
 
 // Debug: log all IPC calls
 const debugInvoke = (channel: string, ...args: any[]) => {
@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Memory API
   getMemoryInfo: (): Promise<MemoryInfo> => debugInvoke('memory:getInfo'),
+  getTokenUsage: (): Promise<TokenUsageInfo> => debugInvoke('token:getUsage'),
 
   // Agent API
   listAgents: (): Promise<{ agents: AgentSummary[] }> => debugInvoke('agent:list'),

@@ -4,7 +4,7 @@ import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
 import { ConfigManager } from './config-manager';
 import { initializeAutoUpdater, checkForUpdates } from './auto-updater';
-import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary } from '../shared/types';
+import { GatewayStatus, ModelConfig, AVAILABLE_SKILLS, PROVIDER_PRESETS, AgentInfo, AgentAuthProfile, AgentSummary, TokenUsageInfo } from '../shared/types';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { URL } from 'node:url';
@@ -256,6 +256,11 @@ class OpenClawApp {
     // Memory IPC
     ipcMain.handle('memory:getInfo', async () => {
       return this.getMemoryInfo();
+    });
+
+    // Token Usage IPC
+    ipcMain.handle('token:getUsage', async () => {
+      return this.getTokenUsage();
     });
 
     // External links
@@ -1048,6 +1053,47 @@ class OpenClawApp {
         memory: gatewayInfo.memory,
       } : undefined,
     };
+  }
+
+  private async getTokenUsage(): Promise<TokenUsageInfo> {
+    const os = require('os');
+    const path = require('path');
+    const usageDir = path.join(os.homedir(), '.openclaw', 'usage');
+    const usageFilePath = path.join(usageDir, 'tokens.json');
+
+    // Check if usage data exists
+    if (!fs.existsSync(usageFilePath)) {
+      // Return empty usage data
+      return {
+        totalTokens: 0,
+        totalCost: 0,
+        currency: 'USD',
+        period: {
+          start: Date.now() - 7 * 24 * 60 * 60 * 1000,
+          end: Date.now(),
+        },
+        byModel: [],
+        dailyUsage: [],
+      };
+    }
+
+    try {
+      const usageData = JSON.parse(fs.readFileSync(usageFilePath, 'utf-8'));
+      return usageData;
+    } catch (error) {
+      log.error('Failed to read token usage:', error);
+      return {
+        totalTokens: 0,
+        totalCost: 0,
+        currency: 'USD',
+        period: {
+          start: Date.now() - 7 * 24 * 60 * 60 * 1000,
+          end: Date.now(),
+        },
+        byModel: [],
+        dailyUsage: [],
+      };
+    }
   }
 
   private async getAgentInfo(agentId?: string): Promise<AgentInfo> {
