@@ -2506,6 +2506,9 @@ body {
   gap: 12px;
   cursor: pointer;
   user-select: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .toggle-switch input[type="checkbox"] {
