@@ -25,6 +25,7 @@ export interface ElectronAPI {
   // Skills Hub API
   fetchSkills: () => Promise<{ success: boolean; data: any[]; error?: string }>;
   installSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+  uninstallSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Gateway API
   getGatewayStatus: () => Promise<GatewayStatus>;

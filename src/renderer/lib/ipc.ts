@@ -44,6 +44,7 @@ export const ipc = {
   // Skills Hub
   fetchSkills: (): Promise<{ success: boolean; data: any[]; error?: string }> => window.electronAPI.fetchSkills(),
   installSkill: (skillId: string): Promise<{ success: boolean; error?: string }> => window.electronAPI.installSkill(skillId),
+  uninstallSkill: (skillId: string): Promise<{ success: boolean; error?: string }> => window.electronAPI.uninstallSkill(skillId),
 
   // Cron
   getCronJobs: (): Promise<{ jobs: CronJob[] }> => window.electronAPI.getCronJobs(),

@@ -213,6 +213,21 @@ class OpenClawApp {
       }
     });
 
+    ipcMain.handle('skills:uninstall', async (_event, skillId: string) => {
+      try {
+        const config = this.configManager.getConfig();
+        const enabledSkills = config.settings.skills?.enabled || [];
+
+        const newSkills = enabledSkills.filter(id => id !== skillId);
+        await this.configManager.setSkills(newSkills);
+
+        return { success: true };
+      } catch (error) {
+        log.error('Failed to uninstall skill:', error);
+        return { success: false, error: (error as Error).message };
+      }
+    });
+
     // Gateway IPC
     ipcMain.handle('gateway:status', (): GatewayStatus => {
       return this.gatewayManager.getStatus();

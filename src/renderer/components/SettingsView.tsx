@@ -49,6 +49,13 @@ export function SettingsView() {
   const [localTaskReliabilitySettings, setLocalTaskReliabilitySettings] = useState<TaskReliabilitySettings | null>(null);
   const [fixingHealthIssue, setFixingHealthIssue] = useState<string | null>(null);
 
+  // Skills Hub state
+  const [hubSkills, setHubSkills] = useState<any[]>([]);
+  const [loadingHubSkills, setLoadingHubSkills] = useState(false);
+  const [installingSkill, setInstallingSkill] = useState<string | null>(null);
+  const [uninstallingSkill, setUninstallingSkill] = useState<string | null>(null);
+  const [showHubSkills, setShowHubSkills] = useState(false);
+
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -222,6 +229,43 @@ export function SettingsView() {
       c.type === channelType ? { ...c, enabled: !c.enabled } : c
     );
     await setChannels(newChannels);
+  };
+
+  const fetchHubSkills = async () => {
+    setLoadingHubSkills(true);
+    try {
+      const result = await ipc.fetchSkills();
+      if (result.success) {
+        setHubSkills(result.data || []);
+        setShowHubSkills(true);
+      }
+    } finally {
+      setLoadingHubSkills(false);
+    }
+  };
+
+  const handleInstallSkill = async (skillId: string) => {
+    setInstallingSkill(skillId);
+    try {
+      const result = await ipc.installSkill(skillId);
+      if (result.success) {
+        await setSkills([...skills, skillId]);
+      }
+    } finally {
+      setInstallingSkill(null);
+    }
+  };
+
+  const handleUninstallSkill = async (skillId: string) => {
+    setUninstallingSkill(skillId);
+    try {
+      const result = await ipc.uninstallSkill(skillId);
+      if (result.success) {
+        await setSkills(skills.filter(s => s !== skillId));
+      }
+    } finally {
+      setUninstallingSkill(null);
+    }
   };
 
   const handleEditModel = (modelId: string) => {
@@ -1307,24 +1351,102 @@ export function SettingsView() {
       {/* Skills Tab */}
       {extensionsTab === 'skills' && (
         <div>
-          <div className="section-subheader" style={{ marginBottom: '16px' }}>
+          <div className="section-subheader" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>{TEXTS.skills.title}</h3>
+            <button
+              className="btn btn-sm btn-secondary"
+              onClick={fetchHubSkills}
+              disabled={loadingHubSkills}
+            >
+              {loadingHubSkills ? 'Loading...' : showHubSkills ? 'Refresh ClawHub' : 'Browse ClawHub'}
+            </button>
           </div>
-          <div className="skills-list">
-            {AVAILABLE_SKILLS.map(skill => (
-              <div className={`skills-list-item ${skills.includes(skill.id) ? 'enabled' : ''}`} key={skill.id}>
-                <label className="list-item-label">
-                  <input
-                    type="checkbox"
-                    checked={skills.includes(skill.id)}
-                    onChange={() => handleSkillToggle(skill.id)}
-                  />
-                  <span className="list-item-name">{skill.name}</span>
-                </label>
-                <span className="list-item-status">{skills.includes(skill.id) ? 'Enabled' : 'Disabled'}</span>
+
+          {/* Installed Skills */}
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ marginBottom: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>Installed Skills</h4>
+            <div className="skills-list">
+              {skills.length === 0 ? (
+                <div className="loading-state">No installed skills</div>
+              ) : (
+                skills.map(skillId => {
+                  const skillInfo = AVAILABLE_SKILLS.find(s => s.id === skillId);
+                  return (
+                    <div className={`skills-list-item enabled`} key={skillId}>
+                      <label className="list-item-label">
+                        <input
+                          type="checkbox"
+                          checked={skills.includes(skillId)}
+                          onChange={() => handleSkillToggle(skillId)}
+                        />
+                        <span className="list-item-name">{skillInfo?.name || skillId}</span>
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span className="list-item-status">Installed</span>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleUninstallSkill(skillId)}
+                          disabled={uninstallingSkill === skillId}
+                        >
+                          {uninstallingSkill === skillId ? '...' : 'Uninstall'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ClawHub Skills */}
+          {showHubSkills && (
+            <div>
+              <h4 style={{ marginBottom: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>ClawHub Skills</h4>
+              <div className="skills-list">
+                {loadingHubSkills ? (
+                  <div className="loading-state">Loading skills from ClawHub...</div>
+                ) : hubSkills.length === 0 ? (
+                  <div className="loading-state">No skills available on ClawHub</div>
+                ) : (
+                  hubSkills.map((skill: any) => {
+                    const isInstalled = skills.includes(skill.id);
+                    return (
+                      <div className={`skills-list-item ${isInstalled ? 'enabled' : ''}`} key={skill.id}>
+                        <div className="list-item-label">
+                          <span className="list-item-name">{skill.name || skill.id}</span>
+                          {skill.description && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>{skill.description}</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {isInstalled ? (
+                            <>
+                              <span className="list-item-status">Installed</span>
+                              <button
+                                className="btn btn-sm btn-secondary"
+                                onClick={() => handleUninstallSkill(skill.id)}
+                                disabled={uninstallingSkill === skill.id}
+                              >
+                                {uninstallingSkill === skill.id ? '...' : 'Uninstall'}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="btn btn-sm"
+                              onClick={() => handleInstallSkill(skill.id)}
+                              disabled={installingSkill === skill.id}
+                            >
+                              {installingSkill === skill.id ? 'Installing...' : 'Install'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
