@@ -72,19 +72,41 @@ export const TEXTS = {
   // Settings View
   settings: {
     title: 'Settings',
+    // New consolidated navigation
+    dashboard: 'Dashboard',
+    permissions: 'Permissions',
+    models: 'Models',
+    extensions: 'Extensions',
+    agent: 'Agent',
+    automation: 'Automation',
+    gateway: 'Gateway',
+    about: 'About',
+
+    // Legacy (kept for compatibility)
     overview: 'Overview',
     usage: 'Usage',
-    permissions: 'Permissions',
     tasks: 'Tasks',
     health: 'Health',
     memory: 'Memory',
-    agent: 'Agent',
     crons: 'Crons',
     skills: 'Skills',
     tools: 'Tools',
     channels: 'Channels',
-    models: 'Models',
-    about: 'About',
+
+    // Extensions sub-tabs
+    skillsTab: 'Skills',
+    toolsTab: 'Tools',
+    channelsTab: 'Channels',
+
+    // Automation sub-tabs
+    cronJobsTab: 'Scheduled Jobs',
+    taskHistoryTab: 'Task History',
+    reliabilitySettingsTab: 'Reliability',
+
+    // Dashboard subsections
+    systemStatus: 'System Status',
+    tokenUsage: 'Token Usage',
+    healthStatus: 'Health Status',
 
     // Models section
     modelConfig: 'Model Configuration',

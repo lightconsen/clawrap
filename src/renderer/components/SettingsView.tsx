@@ -25,7 +25,11 @@ export function SettingsView() {
 
   const config = state.config;
 
-  const [activeSection, setActiveSection] = useState('overview');
+  // Consolidated navigation: dashboard, permissions, models, extensions, agent, automation, gateway, about
+  const [activeSection, setActiveSection] = useState('dashboard');
+  // Tab states for consolidated sections
+  const [extensionsTab, setExtensionsTab] = useState('skills');
+  const [automationTab, setAutomationTab] = useState('crons');
   const [showAddModelModal, setShowAddModelModal] = useState(false);
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [selectedJobForLogs, setSelectedJobForLogs] = useState<string | null>(null);
@@ -56,18 +60,18 @@ export function SettingsView() {
     onConfirm?: () => void;
   } | null>({ show: false, title: '', message: '' });
 
-  // Poll memory info when on memory section
+  // Poll memory info when on memory/agent section
   React.useEffect(() => {
-    if (activeSection === 'memory') {
+    if (activeSection === 'memory' || activeSection === 'agent') {
       refreshMemory();
       const interval = setInterval(refreshMemory, 5000);
       return () => clearInterval(interval);
     }
   }, [activeSection, refreshMemory]);
 
-  // Poll token usage when on overview section
+  // Poll token usage when on dashboard section
   React.useEffect(() => {
-    if (activeSection === 'overview') {
+    if (activeSection === 'dashboard') {
       refreshTokenUsage();
     }
   }, [activeSection, refreshTokenUsage]);
@@ -82,9 +86,9 @@ export function SettingsView() {
     }
   }, [activeSection, refreshPermissionSettings, refreshPermissionInfo]);
 
-  // Load task data when on tasks section
+  // Load task data when on automation section
   React.useEffect(() => {
-    if (activeSection === 'tasks') {
+    if (activeSection === 'automation') {
       refreshTaskStats();
       refreshTaskHistory();
       refreshTaskReliabilitySettings().then((settings) => {
@@ -93,9 +97,9 @@ export function SettingsView() {
     }
   }, [activeSection, refreshTaskStats, refreshTaskHistory, refreshTaskReliabilitySettings]);
 
-  // Load health check when on overview section
+  // Load health check when on dashboard section
   React.useEffect(() => {
-    if (activeSection === 'overview') {
+    if (activeSection === 'dashboard') {
       runHealthCheck();
     }
   }, [activeSection, runHealthCheck]);
@@ -1101,6 +1105,698 @@ export function SettingsView() {
     );
   };
 
+  // Consolidated render functions for merged sections
+
+  const renderDashboardSection = () => (
+    <div className="dashboard-section">
+      <div className="section-header">
+        <h2>{TEXTS.settings.dashboard}</h2>
+        <p className="subtitle">System status, token usage, and health overview</p>
+      </div>
+
+      {/* Health Status Banner */}
+      {healthCheck && (
+        <div className={`health-overall-status ${healthCheck.overall}`} style={{ marginBottom: '20px' }}>
+          <div className="health-status-icon">
+            {healthCheck.overall === 'healthy' ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            ) : healthCheck.overall === 'warning' ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            )}
+          </div>
+          <div className="health-status-info">
+            <h3>System Status: {healthCheck.overall === 'healthy' ? 'Healthy' : healthCheck.overall}</h3>
+            <p className="subtitle">Last checked: {new Date(healthCheck.timestamp).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Token Usage Summary */}
+      {tokenUsage && (
+        <div className="usage-summary-grid" style={{ marginBottom: '20px' }}>
+          <div className="usage-card">
+            <h3>Total Tokens</h3>
+            <div className="usage-stat">{tokenUsage.totalTokens.toLocaleString()}</div>
+          </div>
+          <div className="usage-card">
+            <h3>Estimated Cost</h3>
+            <div className="usage-stat">${tokenUsage.totalCost.toFixed(4)}</div>
+          </div>
+          <div className="usage-card">
+            <h3>Period</h3>
+            <div className="usage-stat">
+              {new Date(tokenUsage.period.start).toLocaleDateString()} - {new Date(tokenUsage.period.end).toLocaleDateString()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* System Status Grid */}
+      <div className="overview-grid">
+        {/* Gateway Status */}
+        <div className="overview-card">
+          <h3>Gateway</h3>
+          <div className="overview-stat">
+            <div className="stat-row">
+              <span className="stat-label">Status:</span>
+              <span className={`stat-value ${gatewayStatus?.running ? 'success' : 'error'}`}>
+                {gatewayStatus?.running ? 'Running' : 'Stopped'}
+              </span>
+            </div>
+            {gatewayStatus?.port && (
+              <div className="stat-row">
+                <span className="stat-label">Port:</span>
+                <span className="stat-value">{gatewayStatus.port}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Primary Model */}
+        <div className="overview-card">
+          <h3>Primary Model</h3>
+          <div className="overview-stat">
+            {primaryModel ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">Provider:</span>
+                  <span className="stat-value">{primaryModel.provider}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Model:</span>
+                  <span className="stat-value">{primaryModel.name}</span>
+                </div>
+              </>
+            ) : (
+              <p className="help-text">No model configured</p>
+            )}
+          </div>
+        </div>
+
+        {/* Agent */}
+        <div className="overview-card">
+          <h3>Agent</h3>
+          <div className="overview-stat">
+            {agentInfo ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">Name:</span>
+                  <span className="stat-value">{agentInfo.name}</span>
+                </div>
+                {agentInfo.model && (
+                  <div className="stat-row">
+                    <span className="stat-label">Model:</span>
+                    <span className="stat-value">{agentInfo.model}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="help-text">Loading...</p>
+            )}
+          </div>
+        </div>
+
+        {/* Memory Quick Stats */}
+        <div className="overview-card">
+          <h3>Memory</h3>
+          <div className="overview-stat">
+            {memoryInfo ? (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">System:</span>
+                  <span className="stat-value">{memoryInfo.systemMemory.percent.toFixed(1)}% used</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Process RSS:</span>
+                  <span className="stat-value">{(memoryInfo.processMemory.rss / 1024 / 1024).toFixed(0)} MB</span>
+                </div>
+              </>
+            ) : (
+              <p className="help-text">Loading...</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Health Checks List */}
+      {healthCheck && healthCheck.checks && healthCheck.checks.length > 0 && (
+        <div style={{ marginTop: '24px' }}>
+          <h3 style={{ marginBottom: '16px', fontSize: '1.1rem' }}>Health Checks</h3>
+          <div className="health-checks-list">
+            {healthCheck.checks.map((check) => (
+              <div key={check.id} className={`health-check-item ${check.status}`}>
+                <div className="health-check-header">
+                  <div className="health-check-name">
+                    <span>{check.name}</span>
+                    <span className={`badge ${check.status === 'pass' ? 'badge-success' : check.status === 'warning' ? 'badge-warning' : 'badge-error'}`}>{check.status}</span>
+                  </div>
+                </div>
+                {check.message && <p className="health-check-message">{check.message}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderExtensionsSection = () => (
+    <div className="extensions-section">
+      <div className="section-header">
+        <h2>{TEXTS.settings.extensions}</h2>
+        <p className="subtitle">Manage skills, tools, and channels</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="personality-tab-header" style={{ marginBottom: '20px' }}>
+        <div className="personality-tab-list">
+          <button
+            className={`personality-tab ${extensionsTab === 'skills' ? 'active' : ''}`}
+            onClick={() => setExtensionsTab('skills')}
+          >
+            {TEXTS.settings.skillsTab}
+          </button>
+          <button
+            className={`personality-tab ${extensionsTab === 'tools' ? 'active' : ''}`}
+            onClick={() => setExtensionsTab('tools')}
+          >
+            {TEXTS.settings.toolsTab}
+          </button>
+          <button
+            className={`personality-tab ${extensionsTab === 'channels' ? 'active' : ''}`}
+            onClick={() => setExtensionsTab('channels')}
+          >
+            {TEXTS.settings.channelsTab}
+          </button>
+        </div>
+      </div>
+
+      {/* Skills Tab */}
+      {extensionsTab === 'skills' && (
+        <div>
+          <div className="section-subheader" style={{ marginBottom: '16px' }}>
+            <h3>{TEXTS.skills.title}</h3>
+          </div>
+          <div className="skills-grid">
+            {skills.map(skill => (
+              <div className={`skill-card ${skills.includes(skill) ? 'enabled' : ''}`} key={skill}>
+                <label className="skill-toggle">
+                  <input
+                    type="checkbox"
+                    checked={skills.includes(skill)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSkills([...skills, skill]);
+                      } else {
+                        setSkills(skills.filter(s => s !== skill));
+                      }
+                    }}
+                  />
+                  <span className="skill-name">{skill}</span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tools Tab */}
+      {extensionsTab === 'tools' && (
+        <div>
+          <div className="section-subheader" style={{ marginBottom: '16px' }}>
+            <h3>{TEXTS.tools.title}</h3>
+          </div>
+          <div className="tools-grid">
+            {tools.map(tool => (
+              <div className={`skill-card ${tools.includes(tool) ? 'enabled' : ''}`} key={tool}>
+                <label className="skill-toggle">
+                  <input
+                    type="checkbox"
+                    checked={tools.includes(tool)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setTools([...tools, tool]);
+                      } else {
+                        setTools(tools.filter(t => t !== tool));
+                      }
+                    }}
+                  />
+                  <span className="skill-name">{tool}</span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Channels Tab */}
+      {extensionsTab === 'channels' && (
+        <div>
+          <div className="section-subheader" style={{ marginBottom: '16px' }}>
+            <h3>{TEXTS.channels.title}</h3>
+          </div>
+          <div className="channels-grid">
+            {channels.map(channel => (
+              <div className={`channel-card ${channel.enabled ? 'enabled' : ''}`} key={channel.type}>
+                <label className="channel-toggle">
+                  <input
+                    type="checkbox"
+                    checked={channel.enabled}
+                    onChange={(e) => {
+                      const updated = channels.map(c =>
+                        c.type === channel.type ? { ...c, enabled: e.target.checked } : c
+                      );
+                      setChannels(updated);
+                    }}
+                  />
+                  <span className="channel-name">{channel.type}</span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderAutomationSection = () => {
+    const formatDuration = (ms?: number) => {
+      if (!ms) return '-';
+      const seconds = (ms / 1000).toFixed(1);
+      return `${seconds}s`;
+    };
+
+    const formatTime = (timestamp?: number) => {
+      if (!timestamp) return '-';
+      return new Date(timestamp).toLocaleString();
+    };
+
+    return (
+      <div className="automation-section">
+        <div className="section-header">
+          <h2>{TEXTS.settings.automation}</h2>
+          <p className="subtitle">Scheduled tasks and execution history</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="personality-tab-header" style={{ marginBottom: '20px' }}>
+          <div className="personality-tab-list">
+            <button
+              className={`personality-tab ${automationTab === 'crons' ? 'active' : ''}`}
+              onClick={() => setAutomationTab('crons')}
+            >
+              {TEXTS.settings.cronJobsTab}
+            </button>
+            <button
+              className={`personality-tab ${automationTab === 'tasks' ? 'active' : ''}`}
+              onClick={() => setAutomationTab('tasks')}
+            >
+              {TEXTS.settings.taskHistoryTab}
+            </button>
+            <button
+              className={`personality-tab ${automationTab === 'reliability' ? 'active' : ''}`}
+              onClick={() => setAutomationTab('reliability')}
+            >
+              {TEXTS.settings.reliabilitySettingsTab}
+            </button>
+          </div>
+        </div>
+
+        {/* Cron Jobs Tab */}
+        {automationTab === 'crons' && (
+          <div>
+            <div className="cron-jobs-list">
+              {cronJobs.length === 0 ? (
+                <div className="loading-state">No scheduled jobs</div>
+              ) : (
+                cronJobs.map(job => (
+                  <div key={job.id} className="cron-job-card">
+                    <div className="cron-job-header">
+                      <span className="cron-job-name">{job.name || job.id}</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => runJob(job.id)}
+                          disabled={runningJobId === job.id}
+                        >
+                          Run Now
+                        </button>
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => toggleJob(job.id, !job.enabled)}
+                        >
+                          {job.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => removeJob(job.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div className="cron-job-details">
+                      <div className="cron-row">
+                        <span className="cron-label">Schedule:</span>
+                        <span className="cron-schedule">{job.schedule}</span>
+                      </div>
+                      <div className="cron-row">
+                        <span className="cron-label">Command:</span>
+                        <span className="cron-command">{job.command}</span>
+                      </div>
+                    </div>
+                    {selectedJobForLogs === job.id && cronLogs.length > 0 && (
+                      <div className="cron-job-logs">
+                        <h4>Recent Logs</h4>
+                        <div className="cron-logs-list">
+                          {cronLogs.slice(0, 5).map((log, idx) => (
+                            <div key={idx} className="cron-log-entry">
+                              <div className="log-header">
+                                <span className="log-time">{new Date(log.timestamp).toLocaleString()}</span>
+                                <span className={`log-status ${log.exitCode === 0 ? 'success' : 'error'}`}>
+                                  {log.exitCode === 0 ? 'Success' : 'Failed'}
+                                </span>
+                                <span className="log-duration">{formatDuration(log.duration)}</span>
+                              </div>
+                              {log.output && <div className="log-output"><pre>{log.output}</pre></div>}
+                              {log.error && <div className="log-error"><pre>{log.error}</pre></div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="cron-job-actions">
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setSelectedJobForLogs(selectedJobForLogs === job.id ? null : job.id)}
+                      >
+                        {selectedJobForLogs === job.id ? 'Hide Logs' : 'View Logs'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Task History Tab */}
+        {automationTab === 'tasks' && (
+          <div>
+            {taskStats && (
+              <div className="task-stats-dashboard" style={{ marginBottom: '20px' }}>
+                <div className="task-stat-card">
+                  <h3>Total Tasks</h3>
+                  <div className="task-stat">
+                    <div className="stat-value" style={{ fontSize: '1.5rem' }}>{taskStats.totalTasks}</div>
+                  </div>
+                </div>
+                <div className="task-stat-card">
+                  <h3>Success Rate</h3>
+                  <div className="task-stat">
+                    <div className="stat-value success" style={{ fontSize: '1.5rem' }}>
+                      {taskStats.totalTasks > 0 ? ((taskStats.totalTasks - (taskStats.failedTasks || 0)) / taskStats.totalTasks * 100).toFixed(1) : '0'}%
+                    </div>
+                  </div>
+                </div>
+                <div className="task-stat-card">
+                  <h3>Avg Duration</h3>
+                  <div className="task-stat">
+                    <div className="stat-value" style={{ fontSize: '1.5rem' }}>{formatDuration(taskStats.averageDuration)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="task-history-list">
+              {taskHistory.length === 0 ? (
+                <div className="loading-state">No task history</div>
+              ) : (
+                taskHistory.slice(0, 20).map((task, idx) => (
+                  <div key={idx} className="task-history-item">
+                    <div className="task-history-header">
+                      <div className="task-history-name">
+                        <span>{task.name || task.type}</span>
+                        <span className={`badge ${task.status === 'completed' ? 'badge-success' : task.status === 'failed' ? 'badge-error' : 'badge-running'}`}>
+                          {task.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="task-history-details">
+                      <span>Type: {task.type}</span>
+                      <span>Duration: {formatDuration(task.duration)}</span>
+                      <span>Time: {formatTime(task.startTime)}</span>
+                    </div>
+                    {task.error && <div className="task-history-error">{task.error}</div>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reliability Settings Tab */}
+        {automationTab === 'reliability' && localTaskReliabilitySettings && (
+          <div className="task-section-block">
+            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label className="toggle-switch" style={{ margin: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={localTaskReliabilitySettings.autoRetry.enabled}
+                  onChange={(e) => setLocalTaskReliabilitySettings({
+                    ...localTaskReliabilitySettings,
+                    autoRetry: { ...localTaskReliabilitySettings.autoRetry, enabled: e.target.checked },
+                  })}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+              <span style={{ flex: 1 }}>Enable automatic retry on failure</span>
+            </div>
+
+            {localTaskReliabilitySettings.autoRetry.enabled && (
+              <>
+                <div className="form-group">
+                  <label>Max Retries</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={localTaskReliabilitySettings.autoRetry.maxRetries}
+                    onChange={(e) => setLocalTaskReliabilitySettings({
+                      ...localTaskReliabilitySettings,
+                      autoRetry: { ...localTaskReliabilitySettings.autoRetry, maxRetries: parseInt(e.target.value) || 0 },
+                    })}
+                    min={0}
+                    max={10}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Retry Delay (ms)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={localTaskReliabilitySettings.autoRetry.retryDelay}
+                    onChange={(e) => setLocalTaskReliabilitySettings({
+                      ...localTaskReliabilitySettings,
+                      autoRetry: { ...localTaskReliabilitySettings.autoRetry, retryDelay: parseInt(e.target.value) || 0 },
+                    })}
+                    min={0}
+                    step={1000}
+                  />
+                </div>
+              </>
+            )}
+
+            <button className="btn" onClick={async () => { await updateTaskReliabilitySettings(localTaskReliabilitySettings); }} disabled={savingSettings} style={{ marginTop: '24px' }}>
+              {savingSettings ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAgentMergedSection = () => {
+    const formatTime = (timestamp?: number) => {
+      if (!timestamp) return 'Never';
+      return new Date(timestamp).toLocaleString();
+    };
+
+    const formatExpiry = (expires?: number) => {
+      if (!expires) return 'No expiration';
+      const now = Date.now();
+      if (expires < now) return 'Expired';
+      const days = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+      return `${days} day${days !== 1 ? 's' : ''} remaining`;
+    };
+
+    return (
+      <div className="agent-section">
+        <div className="section-header">
+          <h2>{TEXTS.settings.agent}</h2>
+          <p className="subtitle">View and manage your AI agent configurations</p>
+        </div>
+
+        {agentList.length === 0 ? (
+          <div className="loading-state">Loading agents...</div>
+        ) : (
+          <>
+            {/* Main Agent */}
+            {agentInfo && (
+              <div className="agent-details" style={{ marginBottom: '32px' }}>
+                <div className="agent-grid">
+                  <div className="agent-card">
+                    <h3>Main Agent Configuration</h3>
+                    <div className="agent-stat">
+                      <div className="stat-row">
+                        <span className="stat-label">Name:</span>
+                        <span className="stat-value">{agentInfo.name}</span>
+                      </div>
+                      {agentInfo.model && (
+                        <div className="stat-row">
+                          <span className="stat-label">Model:</span>
+                          <span className="stat-value">{agentInfo.model}</span>
+                        </div>
+                      )}
+                      <div className="stat-row">
+                        <span className="stat-label">Config Path:</span>
+                        <span className="stat-value" style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>{agentInfo.configPath}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Auth Profiles */}
+                  {agentInfo.authProfiles && agentInfo.authProfiles.length > 0 && (
+                    <div className="agent-card">
+                      <h3>Auth Profiles</h3>
+                      <div className="auth-profiles-list">
+                        {agentInfo.authProfiles.map(profile => (
+                          <div key={profile.profileId} className="auth-profile-card">
+                            <div className="auth-profile-header">
+                              <span className="auth-profile-name">{profile.provider || 'Unknown'}</span>
+                              <span className="badge badge-primary">{profile.type}</span>
+                            </div>
+                            <div className="auth-profile-details">
+                              {profile.email && (
+                                <div className="stat-row">
+                                  <span className="stat-label">Email:</span>
+                                  <span className="stat-value">{profile.email}</span>
+                                </div>
+                              )}
+                              <div className="stat-row">
+                                <span className="stat-label">Expires:</span>
+                                <span className="stat-value">{formatExpiry(profile.expires)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Personality Files */}
+            <div className="personality-section" style={{ marginTop: '40px', paddingTop: '40px', borderTop: '1px solid var(--border)' }}>
+              <div className="section-header">
+                <h2>Personality Files</h2>
+                <p className="subtitle">Agent personality and behavior configuration</p>
+              </div>
+
+              {loadingPersonality ? (
+                <div className="loading-state">Loading personality files...</div>
+              ) : personalityFiles.length === 0 ? (
+                <p className="help-text">No personality files found</p>
+              ) : (
+                <div className="personality-tabs">
+                  <div className="personality-tab-header">
+                    <div className="personality-tab-list">
+                      {personalityFiles.map(file => (
+                        <button
+                          key={file.name}
+                          className={`personality-tab ${activePersonalityTab === file.name ? 'active' : ''}`}
+                          onClick={() => {
+                            setActivePersonalityTab(file.name);
+                            setEditingPersonality(false);
+                          }}
+                          disabled={editingPersonality}
+                        >
+                          {file.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="personality-actions">
+                      {editingPersonality ? (
+                        <>
+                          <button
+                            className="btn btn-sm"
+                            onClick={handleSavePersonalityFile}
+                            disabled={savingPersonality}
+                          >
+                            {savingPersonality ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => {
+                              setEditingPersonality(false);
+                              const activeFile = personalityFiles.find(f => f.name === activePersonalityTab);
+                              if (activeFile) setEditedContent(activeFile.content);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => setEditingPersonality(true)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {saveStatus && (
+                    <div className={`save-status ${saveStatus.success ? 'success' : 'error'}`}>
+                      {saveStatus.message}
+                    </div>
+                  )}
+
+                  <div className="personality-content">
+                    {editingPersonality ? (
+                      <textarea
+                        className="personality-editor"
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                      />
+                    ) : (
+                      <pre className="personality-file-content">
+                        {personalityFiles.find(f => f.name === activePersonalityTab)?.content || ''}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const renderGatewaySection = () => (
     <div className="gateway-section">
       <div className="section-header">
@@ -1755,7 +2451,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['overview', 'usage', 'permissions', 'tasks', 'health', 'memory', 'agent', 'crons', 'skills', 'tools', 'channels', 'models', 'about'] as const).map(section => (
+            {(['dashboard', 'permissions', 'models', 'extensions', 'agent', 'automation', 'gateway', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -1768,18 +2464,13 @@ export function SettingsView() {
         </div>
 
         <div className="settings-content">
-          {activeSection === 'overview' && renderOverviewSection()}
-          {activeSection === 'usage' && renderUsageSection()}
+          {activeSection === 'dashboard' && renderDashboardSection()}
           {activeSection === 'permissions' && renderPermissionsSection()}
-          {activeSection === 'tasks' && renderTasksSection()}
-          {activeSection === 'health' && renderHealthSection()}
-          {activeSection === 'memory' && renderMemorySection()}
-          {activeSection === 'agent' && renderAgentSection()}
-          {activeSection === 'crons' && renderCronSection()}
-          {activeSection === 'skills' && renderSkillsSection()}
-          {activeSection === 'tools' && renderToolsSection()}
-          {activeSection === 'channels' && renderChannelsSection()}
           {activeSection === 'models' && renderModelsSection()}
+          {activeSection === 'extensions' && renderExtensionsSection()}
+          {activeSection === 'agent' && renderAgentMergedSection()}
+          {activeSection === 'automation' && renderAutomationSection()}
+          {activeSection === 'gateway' && renderGatewaySection()}
           {activeSection === 'about' && (
             <div className="about-section">
               <div className="section-header">
