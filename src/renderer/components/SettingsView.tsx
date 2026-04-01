@@ -1310,23 +1310,18 @@ export function SettingsView() {
           <div className="section-subheader" style={{ marginBottom: '16px' }}>
             <h3>{TEXTS.skills.title}</h3>
           </div>
-          <div className="skills-grid">
-            {skills.map(skill => (
-              <div className={`skill-card ${skills.includes(skill) ? 'enabled' : ''}`} key={skill}>
-                <label className="skill-toggle">
+          <div className="skills-list">
+            {AVAILABLE_SKILLS.map(skill => (
+              <div className={`skills-list-item ${skills.includes(skill.id) ? 'enabled' : ''}`} key={skill.id}>
+                <label className="list-item-label">
                   <input
                     type="checkbox"
-                    checked={skills.includes(skill)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSkills([...skills, skill]);
-                      } else {
-                        setSkills(skills.filter(s => s !== skill));
-                      }
-                    }}
+                    checked={skills.includes(skill.id)}
+                    onChange={() => handleSkillToggle(skill.id)}
                   />
-                  <span className="skill-name">{skill}</span>
+                  <span className="list-item-name">{skill.name}</span>
                 </label>
+                <span className="list-item-status">{skills.includes(skill.id) ? 'Enabled' : 'Disabled'}</span>
               </div>
             ))}
           </div>
@@ -1339,23 +1334,18 @@ export function SettingsView() {
           <div className="section-subheader" style={{ marginBottom: '16px' }}>
             <h3>{TEXTS.tools.title}</h3>
           </div>
-          <div className="tools-grid">
+          <div className="tools-list">
             {tools.map(tool => (
-              <div className={`skill-card ${tools.includes(tool) ? 'enabled' : ''}`} key={tool}>
-                <label className="skill-toggle">
+              <div className={`tools-list-item ${tools.includes(tool) ? 'enabled' : ''}`} key={tool}>
+                <label className="list-item-label">
                   <input
                     type="checkbox"
                     checked={tools.includes(tool)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setTools([...tools, tool]);
-                      } else {
-                        setTools(tools.filter(t => t !== tool));
-                      }
-                    }}
+                    onChange={() => handleToolToggle(tool)}
                   />
-                  <span className="skill-name">{tool}</span>
+                  <span className="list-item-name">{tool}</span>
                 </label>
+                <span className="list-item-status">{tools.includes(tool) ? 'Enabled' : 'Disabled'}</span>
               </div>
             ))}
           </div>
@@ -1368,22 +1358,18 @@ export function SettingsView() {
           <div className="section-subheader" style={{ marginBottom: '16px' }}>
             <h3>{TEXTS.channels.title}</h3>
           </div>
-          <div className="channels-grid">
+          <div className="channels-list">
             {channels.map(channel => (
-              <div className={`channel-card ${channel.enabled ? 'enabled' : ''}`} key={channel.type}>
-                <label className="channel-toggle">
+              <div className={`channels-list-item ${channel.enabled ? 'enabled' : ''}`} key={channel.type}>
+                <label className="list-item-label">
                   <input
                     type="checkbox"
                     checked={channel.enabled}
-                    onChange={(e) => {
-                      const updated = channels.map(c =>
-                        c.type === channel.type ? { ...c, enabled: e.target.checked } : c
-                      );
-                      setChannels(updated);
-                    }}
+                    onChange={() => handleChannelToggle(channel.type)}
                   />
-                  <span className="channel-name">{channel.type}</span>
+                  <span className="list-item-name">{channel.type}</span>
                 </label>
+                <span className="list-item-status">{channel.enabled ? 'Enabled' : 'Disabled'}</span>
               </div>
             ))}
           </div>
