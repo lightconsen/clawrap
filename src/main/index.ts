@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Tray, Menu, nativeImage, dialog } from 'electron';
 import * as path from 'path';
 import * as log from 'electron-log';
 import { GatewayManager } from './gateway-manager';
@@ -225,6 +225,40 @@ class OpenClawApp {
       } catch (error) {
         log.error('Failed to uninstall skill:', error);
         return { success: false, error: (error as Error).message };
+      }
+    });
+
+    ipcMain.handle('skills:installFromZip', async () => {
+      try {
+        const result = await dialog.showOpenDialog({
+          properties: ['openFile'],
+          filters: [{ name: 'ZIP Files', extensions: ['zip'] }]
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { success: false, error: 'No file selected', skillId: null };
+        }
+
+        const zipPath = result.filePaths[0];
+
+        // Extract skill ID from zip filename (e.g., my-skill.zip -> my-skill)
+        const zipFileName = path.basename(zipPath, '.zip');
+        const skillId = zipFileName;
+
+        // TODO: Extract zip to skills folder and read package info
+        // For now, just add to enabled skills
+        const config = this.configManager.getConfig();
+        const enabledSkills = config.settings.skills?.enabled || [];
+
+        if (!enabledSkills.includes(skillId)) {
+          enabledSkills.push(skillId);
+          await this.configManager.setSkills(enabledSkills);
+        }
+
+        return { success: true, skillId, skillName: zipFileName };
+      } catch (error) {
+        log.error('Failed to install skill from zip:', error);
+        return { success: false, error: (error as Error).message, skillId: null };
       }
     });
 

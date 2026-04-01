@@ -50,11 +50,9 @@ export function SettingsView() {
   const [fixingHealthIssue, setFixingHealthIssue] = useState<string | null>(null);
 
   // Skills Hub state
-  const [hubSkills, setHubSkills] = useState<any[]>([]);
   const [loadingHubSkills, setLoadingHubSkills] = useState(false);
   const [installingSkill, setInstallingSkill] = useState<string | null>(null);
   const [uninstallingSkill, setUninstallingSkill] = useState<string | null>(null);
-  const [showHubSkills, setShowHubSkills] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
   const [showSkillDetail, setShowSkillDetail] = useState(false);
 
@@ -233,19 +231,6 @@ export function SettingsView() {
     await setChannels(newChannels);
   };
 
-  const fetchHubSkills = async () => {
-    setLoadingHubSkills(true);
-    try {
-      const result = await ipc.fetchSkills();
-      if (result.success) {
-        setHubSkills(result.data || []);
-        setShowHubSkills(true);
-      }
-    } finally {
-      setLoadingHubSkills(false);
-    }
-  };
-
   const handleInstallSkill = async (skillId: string) => {
     setInstallingSkill(skillId);
     try {
@@ -267,6 +252,20 @@ export function SettingsView() {
       }
     } finally {
       setUninstallingSkill(null);
+    }
+  };
+
+  const handleInstallFromZip = async () => {
+    setLoadingHubSkills(true);
+    try {
+      const result = await ipc.installSkillFromZip();
+      if (result.success && result.skillId) {
+        await setSkills([...skills, result.skillId]);
+      } else if (result.error) {
+        console.error('Failed to install skill:', result.error);
+      }
+    } finally {
+      setLoadingHubSkills(false);
     }
   };
 
@@ -1361,11 +1360,11 @@ export function SettingsView() {
           <div className="section-subheader" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>{TEXTS.skills.title}</h3>
             <button
-              className="btn btn-sm btn-secondary"
-              onClick={fetchHubSkills}
+              className="btn btn-sm"
+              onClick={handleInstallFromZip}
               disabled={loadingHubSkills}
             >
-              {loadingHubSkills ? 'Loading...' : showHubSkills ? 'Refresh ClawHub' : 'Browse ClawHub'}
+              {loadingHubSkills ? 'Installing...' : '+ Install from ZIP'}
             </button>
           </div>
 
@@ -1401,52 +1400,6 @@ export function SettingsView() {
               )}
             </div>
           </div>
-
-          {/* ClawHub Skills */}
-          {showHubSkills && (
-            <div>
-              <h4 style={{ marginBottom: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>ClawHub Skills</h4>
-              <div className="skills-list">
-                {loadingHubSkills ? (
-                  <div className="loading-state">Loading skills from ClawHub...</div>
-                ) : hubSkills.length === 0 ? (
-                  <div className="loading-state">No skills available on ClawHub</div>
-                ) : (
-                  hubSkills.map((skill: any) => {
-                    const isInstalled = skills.includes(skill.id);
-                    return (
-                      <div className="skills-list-item" key={skill.id}>
-                        <div className="skills-list-content" onClick={() => handleViewSkillDetail(skill)} style={{ cursor: 'pointer' }}>
-                          <span className="skills-list-name">{skill.name || skill.id}</span>
-                          {skill.description && (
-                            <span className="skills-list-desc">{skill.description}</span>
-                          )}
-                        </div>
-                        {isInstalled ? (
-                          <button
-                            className="skills-list-icon-btn"
-                            onClick={(e) => { e.stopPropagation(); handleUninstallSkill(skill.id); }}
-                            disabled={uninstallingSkill === skill.id}
-                            title="Uninstall"
-                          >
-                            {uninstallingSkill === skill.id ? '...' : '🗑️'}
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-sm"
-                            onClick={(e) => { e.stopPropagation(); handleInstallSkill(skill.id); }}
-                            disabled={installingSkill === skill.id}
-                          >
-                            {installingSkill === skill.id ? 'Installing...' : 'Install'}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Skill Detail Modal */}
           {showSkillDetail && selectedSkill && (
