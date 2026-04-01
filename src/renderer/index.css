@@ -2516,6 +2516,14 @@ body {
   height: 20px;
   cursor: pointer;
   accent-color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.toggle-switch > span:not(.toggle-slider) {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.5;
 }
 
 /* Buttons */
