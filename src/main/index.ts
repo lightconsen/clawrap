@@ -240,13 +240,81 @@ class OpenClawApp {
         }
 
         const zipPath = result.filePaths[0];
-
-        // Extract skill ID from zip filename (e.g., my-skill.zip -> my-skill)
         const zipFileName = path.basename(zipPath, '.zip');
         const skillId = zipFileName;
 
-        // TODO: Extract zip to skills folder and read package info
-        // For now, just add to enabled skills
+        // Get user's home directory for skills folder
+        const os = await import('os');
+        const homedir = os.homedir();
+        const skillsDir = path.join(homedir, '.openclaw', 'skills', skillId);
+
+        // Ensure skills directory exists
+        await fs.promises.mkdir(skillsDir, { recursive: true });
+
+        // Extract ZIP using built-in unzip on macOS/Linux
+        const { exec } = await import('node:child_process');
+        const { promisify } = await import('node:util');
+        const execAsync = promisify(exec);
+
+        try {
+          // Use system unzip command (available on macOS/Linux)
+          await execAsync(`unzip -o "${zipPath}" -d "${skillsDir}"`);
+        } catch (unzipError) {
+          log.warn('System unzip failed, trying alternative:', unzipError);
+          throw new Error('Failed to extract ZIP. Please ensure unzip is installed.');
+        }
+
+        // Read SKILL.md for metadata
+        let skillName = skillId;
+        let skillDescription = '';
+        let skillVersion = '';
+        let skillAuthor = '';
+
+        const skillMdPath = path.join(skillsDir, 'SKILL.md');
+        const packageJsonPath = path.join(skillsDir, 'package.json');
+
+        try {
+          if (await fs.promises.access(skillMdPath).then(() => true).catch(() => false)) {
+            const skillMdContent = await fs.promises.readFile(skillMdPath, 'utf-8');
+            // Parse frontmatter from SKILL.md (YAML between --- markers)
+            const frontmatterMatch = skillMdContent.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+            if (frontmatterMatch) {
+              const frontmatter = frontmatterMatch[1];
+              const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+              const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+              const versionMatch = frontmatter.match(/^version:\s*(.+)$/m);
+              const authorMatch = frontmatter.match(/^author:\s*(.+)$/m);
+
+              if (nameMatch) skillName = nameMatch[1].trim();
+              if (descMatch) skillDescription = descMatch[1].trim();
+              if (versionMatch) skillVersion = versionMatch[1].trim();
+              if (authorMatch) skillAuthor = authorMatch[1].trim();
+            }
+
+            // If no name from frontmatter, try to get from first heading
+            if (skillName === skillId) {
+              const headingMatch = skillMdContent.match(/^#\s*(.+)$/m);
+              if (headingMatch) skillName = headingMatch[1].trim();
+            }
+          }
+        } catch (e) {
+          log.warn('Failed to read SKILL.md:', e);
+        }
+
+        // Fallback to package.json if SKILL.md not found or incomplete
+        if (!skillDescription && await fs.promises.access(packageJsonPath).then(() => true).catch(() => false)) {
+          try {
+            const packageJson = JSON.parse(await fs.promises.readFile(packageJsonPath, 'utf-8'));
+            if (!skillName || skillName === skillId) skillName = packageJson.name || skillName;
+            skillDescription = packageJson.description || skillDescription;
+            skillVersion = packageJson.version || skillVersion;
+            skillAuthor = packageJson.author || skillAuthor;
+          } catch (e) {
+            log.warn('Failed to read package.json:', e);
+          }
+        }
+
+        // Add to enabled skills
         const config = this.configManager.getConfig();
         const enabledSkills = config.settings.skills?.enabled || [];
 
@@ -255,7 +323,15 @@ class OpenClawApp {
           await this.configManager.setSkills(enabledSkills);
         }
 
-        return { success: true, skillId, skillName: zipFileName };
+        return {
+          success: true,
+          skillId,
+          skillName,
+          skillDescription,
+          skillVersion,
+          skillAuthor,
+          skillsDir
+        };
       } catch (error) {
         log.error('Failed to install skill from zip:', error);
         return { success: false, error: (error as Error).message, skillId: null };

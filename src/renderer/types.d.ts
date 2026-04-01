@@ -26,7 +26,7 @@ export interface ElectronAPI {
   fetchSkills: () => Promise<{ success: boolean; data: any[]; error?: string }>;
   installSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
   uninstallSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
-  installSkillFromZip: () => Promise<{ success: boolean; skillId?: string | null; skillName?: string; error?: string }>;
+  installSkillFromZip: () => Promise<{ success: boolean; skillId?: string | null; skillName?: string; skillDescription?: string; skillVersion?: string; skillAuthor?: string; skillsDir?: string; error?: string }>;
 
   // Gateway API
   getGatewayStatus: () => Promise<GatewayStatus>;

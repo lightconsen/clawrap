@@ -55,6 +55,7 @@ export function SettingsView() {
   const [uninstallingSkill, setUninstallingSkill] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
   const [showSkillDetail, setShowSkillDetail] = useState(false);
+  const [installedSkillMetas, setInstalledSkillMetas] = useState<Record<string, { name?: string; description?: string; version?: string; author?: string }>>({});
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -261,6 +262,18 @@ export function SettingsView() {
       const result = await ipc.installSkillFromZip();
       if (result.success && result.skillId) {
         await setSkills([...skills, result.skillId]);
+        // Save skill metadata for display
+        if (result.skillName || result.skillDescription) {
+          setInstalledSkillMetas(prev => ({
+            ...prev,
+            [result.skillId!]: {
+              name: result.skillName,
+              description: result.skillDescription,
+              version: result.skillVersion,
+              author: result.skillAuthor
+            }
+          }));
+        }
       } else if (result.error) {
         console.error('Failed to install skill:', result.error);
       }
@@ -1377,13 +1390,14 @@ export function SettingsView() {
               ) : (
                 skills.map(skillId => {
                   const skillInfo = AVAILABLE_SKILLS.find(s => s.id === skillId);
-                  const skillData = skillInfo || { id: skillId, name: skillId };
+                  const skillMeta = installedSkillMetas[skillId];
+                  const skillData = skillInfo || { id: skillId, name: skillMeta?.name || skillId, description: skillMeta?.description };
                   return (
                     <div className="skills-list-item" key={skillId}>
                       <div className="skills-list-content" onClick={() => handleViewSkillDetail(skillData)} style={{ cursor: 'pointer' }}>
-                        <span className="skills-list-name">{skillInfo?.name || skillId}</span>
-                        {skillInfo?.description && (
-                          <span className="skills-list-desc">{skillInfo.description}</span>
+                        <span className="skills-list-name">{skillInfo?.name || skillMeta?.name || skillId}</span>
+                        {(skillInfo?.description || skillMeta?.description) && (
+                          <span className="skills-list-desc">{skillInfo?.description || skillMeta?.description}</span>
                         )}
                       </div>
                       <button
