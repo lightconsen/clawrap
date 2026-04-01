@@ -24,6 +24,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getChannels: (): Promise<{ type: string; enabled: boolean }[]> => debugInvoke('config:getChannels'),
   setChannels: (channels: { type: string; enabled: boolean }[]): Promise<boolean> => debugInvoke('config:setChannels', channels),
 
+  // Channels CLI API
+  listChannels: (): Promise<{ success: boolean; output: string; error?: string }> => debugInvoke('channels:list'),
+  addChannel: (options: { channel: string; name?: string; token?: string; [key: string]: string | undefined }): Promise<{ success: boolean; output: string; message?: string; error?: string }> =>
+    debugInvoke('channels:add', options),
+  removeChannel: (options: { channel: string; account?: string; delete?: boolean }): Promise<{ success: boolean; output: string; message?: string; error?: string }> =>
+    debugInvoke('channels:remove', options),
+
   // Model Management API
   getSavedModels: (): Promise<ModelConfig[]> => debugInvoke('models:get'),
   addModel: (model: ModelConfig): Promise<boolean> => debugInvoke('models:add', model),
@@ -120,6 +127,10 @@ declare global {
       setTools: (tools: string[]) => Promise<boolean>;
       getChannels: () => Promise<{ type: string; enabled: boolean }[]>;
       setChannels: (channels: { type: string; enabled: boolean }[]) => Promise<boolean>;
+      // Channels CLI API
+      listChannels: () => Promise<{ success: boolean; output: string; error?: string }>;
+      addChannel: (options: { channel: string; name?: string; token?: string; [key: string]: string | undefined }) => Promise<{ success: boolean; output: string; message?: string; error?: string }>;
+      removeChannel: (options: { channel: string; account?: string; delete?: boolean }) => Promise<{ success: boolean; output: string; message?: string; error?: string }>;
       getSettingsData: () => Promise<{ config: OpenClawConfig; status: GatewayStatus; installCheck: { installed: boolean; path?: string; version?: string } }>;
       getGatewayStatus: () => Promise<GatewayStatus>;
       restartGateway: () => Promise<GatewayStatus>;

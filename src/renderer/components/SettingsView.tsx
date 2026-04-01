@@ -49,6 +49,18 @@ export function SettingsView() {
   const [localTaskReliabilitySettings, setLocalTaskReliabilitySettings] = useState<TaskReliabilitySettings | null>(null);
   const [fixingHealthIssue, setFixingHealthIssue] = useState<string | null>(null);
 
+  // Channels state
+  const [channelsOutput, setChannelsOutput] = useState<string>('');
+  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [showAddChannelModal, setShowAddChannelModal] = useState(false);
+  const [addingChannel, setAddingChannel] = useState(false);
+  const [newChannel, setNewChannel] = useState<{ channel: string; name: string; token: string }>({
+    channel: '',
+    name: '',
+    token: ''
+  });
+  const [removingChannel, setRemovingChannel] = useState<string | null>(null);
+
   // Skills Hub state
   const [loadingHubSkills, setLoadingHubSkills] = useState(false);
   const [installingSkill, setInstallingSkill] = useState<string | null>(null);
@@ -111,6 +123,59 @@ export function SettingsView() {
       runHealthCheck();
     }
   }, [activeSection, runHealthCheck]);
+
+  // Load channels when on channels section
+  React.useEffect(() => {
+    if (activeSection === 'channels') {
+      loadChannels();
+    }
+  }, [activeSection]);
+
+  const loadChannels = async () => {
+    setLoadingChannels(true);
+    try {
+      const result = await ipc.listChannels();
+      setChannelsOutput(result.output || '');
+    } catch (err) {
+      setChannelsOutput('Failed to load channels: ' + (err as Error).message);
+    } finally {
+      setLoadingChannels(false);
+    }
+  };
+
+  const handleAddChannel = async () => {
+    if (!newChannel.channel) return;
+
+    setAddingChannel(true);
+    try {
+      const options: { channel: string; name?: string; token?: string } = {
+        channel: newChannel.channel,
+      };
+      if (newChannel.name) options.name = newChannel.name;
+      if (newChannel.token) options.token = newChannel.token;
+
+      const result = await ipc.addChannel(options);
+      if (result.success) {
+        await loadChannels();
+        setShowAddChannelModal(false);
+        setNewChannel({ channel: '', name: '', token: '' });
+      }
+    } finally {
+      setAddingChannel(false);
+    }
+  };
+
+  const handleRemoveChannel = async (channelType: string) => {
+    setRemovingChannel(channelType);
+    try {
+      const result = await ipc.removeChannel({ channel: channelType, delete: true });
+      if (result.success) {
+        await loadChannels();
+      }
+    } finally {
+      setRemovingChannel(null);
+    }
+  };
 
   // Track if we've initialized the agent section
   const agentInitialized = React.useRef(false);
@@ -1477,26 +1542,196 @@ export function SettingsView() {
     <div className="channels-section">
       <div className="section-header">
         <h2>{TEXTS.settings.channels}</h2>
-        <p className="subtitle">Manage bypass channels for different AI assistants</p>
+        <p className="subtitle">OpenClaw channels management</p>
       </div>
-      <div className="channels-list">
-        {channels.map(channel => (
-          <div className="channels-list-item" key={channel.type}>
-            <div className="list-item-label">
-              <span className="list-item-name">{channel.type}</span>
-              <span className="list-item-desc">Bypass channel for {channel.type} assistant</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={channel.enabled}
-                onChange={() => handleChannelToggle(channel.type)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
+
+      {/* Action Bar */}
+      <div className="channels-action-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <button
+          onClick={loadChannels}
+          disabled={loadingChannels}
+          className="btn-secondary"
+          style={{ marginRight: '10px' }}
+        >
+          {loadingChannels ? 'Refreshing...' : 'Refresh'}
+        </button>
+        <button
+          onClick={() => setShowAddChannelModal(true)}
+          className="btn-primary"
+        >
+          + Add Channel
+        </button>
+      </div>
+
+      {/* Channels Output */}
+      <div className="channels-output" style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        borderRadius: '8px',
+        padding: '16px',
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        whiteSpace: 'pre-wrap',
+        minHeight: '200px',
+        maxHeight: '500px',
+        overflow: 'auto'
+      }}>
+        {loadingChannels ? (
+          <span style={{ color: 'var(--text-secondary)' }}>Loading channels...</span>
+        ) : channelsOutput ? (
+          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{channelsOutput}</pre>
+        ) : (
+          <span style={{ color: 'var(--text-secondary)' }}>No channels configured. Click "Add Channel" to add one.</span>
+        )}
+      </div>
+
+      {/* Channel Accounts List */}
+      <div className="channels-accounts" style={{ marginTop: '24px' }}>
+        <h3 style={{ marginBottom: '12px', fontSize: '16px' }}>Channel Accounts</h3>
+        {channelsOutput.includes('Auth providers') || channelsOutput.includes('no provider') ? (
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No channel accounts configured. Use the "Add Channel" button to add one.</p>
+        ) : (
+          <div className="channels-list">
+            {/* Parse output for accounts - simplified display */}
+            {channelsOutput.split('\n').filter(line => line.trim() && !line.startsWith('Chat channels:') && !line.startsWith('Auth providers') && !line.includes('none') && !line.includes('Usage:') && !line.includes('Docs:')).map((line, idx) => (
+              <div className="channels-list-item" key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: '1px solid var(--border)' }}>
+                <div className="list-item-label">
+                  <span className="list-item-name" style={{ fontSize: '14px' }}>{line.trim()}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    // Try to extract channel type from line
+                    const channelType = line.toLowerCase().includes('telegram') ? 'telegram' :
+                                       line.toLowerCase().includes('whatsapp') ? 'whatsapp' :
+                                       line.toLowerCase().includes('discord') ? 'discord' :
+                                       line.toLowerCase().includes('slack') ? 'slack' : '';
+                    if (channelType && confirm(`Remove ${channelType} channel?`)) {
+                      handleRemoveChannel(channelType);
+                    }
+                  }}
+                  disabled={removingChannel !== null}
+                  className="btn-danger"
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                >
+                  {removingChannel ? 'Removing...' : 'Remove'}
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
+
+      {/* Add Channel Modal */}
+      {showAddChannelModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="modal-content" style={{
+            background: 'var(--bg-primary)',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '450px'
+          }}>
+            <h3 style={{ marginBottom: '20px', fontSize: '18px' }}>Add Channel</h3>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Channel Type</label>
+              <select
+                value={newChannel.channel}
+                onChange={(e) => setNewChannel({ ...newChannel, channel: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">Select channel type...</option>
+                <option value="telegram">Telegram</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="discord">Discord</option>
+                <option value="slack">Slack</option>
+                <option value="irc">IRC</option>
+                <option value="googlechat">Google Chat</option>
+                <option value="signal">Signal</option>
+                <option value="imessage">iMessage</option>
+                <option value="line">LINE</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Display Name (optional)</label>
+              <input
+                type="text"
+                value={newChannel.name}
+                onChange={(e) => setNewChannel({ ...newChannel, name: e.target.value })}
+                placeholder="My Channel"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Bot Token (optional)</label>
+              <input
+                type="text"
+                value={newChannel.token}
+                onChange={(e) => setNewChannel({ ...newChannel, token: e.target.value })}
+                placeholder="Enter bot token"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  setShowAddChannelModal(false);
+                  setNewChannel({ channel: '', name: '', token: '' });
+                }}
+                className="btn-secondary"
+                disabled={addingChannel}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddChannel}
+                className="btn-primary"
+                disabled={addingChannel || !newChannel.channel}
+              >
+                {addingChannel ? 'Adding...' : 'Add Channel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

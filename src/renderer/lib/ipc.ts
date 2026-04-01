@@ -15,6 +15,12 @@ export const ipc = {
   setTools: (tools: string[]): Promise<boolean> => window.electronAPI.setTools(tools),
   getChannels: (): Promise<{ type: string; enabled: boolean }[]> => window.electronAPI.getChannels(),
   setChannels: (channels: { type: string; enabled: boolean }[]): Promise<boolean> => window.electronAPI.setChannels(channels),
+  // Channels CLI API
+  listChannels: (): Promise<{ success: boolean; output: string; error?: string }> => window.electronAPI.listChannels(),
+  addChannel: (options: { channel: string; name?: string; token?: string; [key: string]: string | undefined }): Promise<{ success: boolean; output: string; message?: string; error?: string }> =>
+    window.electronAPI.addChannel(options),
+  removeChannel: (options: { channel: string; account?: string; delete?: boolean }): Promise<{ success: boolean; output: string; message?: string; error?: string }> =>
+    window.electronAPI.removeChannel(options),
 
   // Models
   getSavedModels: (): Promise<ModelConfig[]> => window.electronAPI.getSavedModels(),

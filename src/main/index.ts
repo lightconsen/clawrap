@@ -122,15 +122,102 @@ class OpenClawApp {
       return true;
     });
 
-    // Channels IPC
-    ipcMain.handle('config:getChannels', async () => {
-      const config = this.configManager.getConfig();
-      return config.settings.bypass_channels || [];
+    // Channels IPC - OpenClaw CLI commands
+    ipcMain.handle('channels:list', async () => {
+      try {
+        const { execFile } = await import('child_process');
+        const { promisify } = await import('util');
+        const execFilePromise = promisify(execFile);
+
+        const { stdout, stderr } = await execFilePromise('openclaw', ['channels', 'list']);
+
+        if (stderr && !stderr.includes('OpenClaw') && !stderr.includes('🦞')) {
+          log.warn('channels list stderr:', stderr);
+        }
+
+        return { success: true, output: stdout };
+      } catch (error) {
+        log.error('Failed to list channels:', error);
+        return {
+          success: false,
+          error: (error as Error).message,
+          output: ''
+        };
+      }
     });
 
-    ipcMain.handle('config:setChannels', async (_event, channels: { type: string; enabled: boolean }[]) => {
-      await this.configManager.setChannels(channels);
-      return true;
+    ipcMain.handle('channels:add', async (_event, options: {
+      channel: string;
+      name?: string;
+      token?: string;
+      [key: string]: string | undefined;
+    }) => {
+      try {
+        const { execFile } = await import('child_process');
+        const { promisify } = await import('util');
+        const execFilePromise = promisify(execFile);
+
+        const args = ['channels', 'add', '--channel', options.channel];
+
+        // Add optional arguments
+        if (options.name) args.push('--name', options.name);
+        if (options.token) args.push('--token', options.token);
+
+        // Add any other provided options
+        for (const [key, value] of Object.entries(options)) {
+          if (!['channel', 'name', 'token'].includes(key) && value) {
+            const flag = `--${key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase())}`;
+            args.push(flag, value);
+          }
+        }
+
+        const { stdout, stderr } = await execFilePromise('openclaw', args);
+
+        return {
+          success: true,
+          output: stdout,
+          message: `Channel ${options.channel} added successfully`
+        };
+      } catch (error) {
+        log.error('Failed to add channel:', error);
+        return {
+          success: false,
+          error: (error as Error).message,
+          output: ''
+        };
+      }
+    });
+
+    ipcMain.handle('channels:remove', async (_event, options: {
+      channel: string;
+      account?: string;
+      delete?: boolean;
+    }) => {
+      try {
+        const { execFile } = await import('child_process');
+        const { promisify } = await import('util');
+        const execFilePromise = promisify(execFile);
+
+        const args = ['channels', 'remove', '--channel', options.channel];
+
+        if (options.account) args.push('--account', options.account);
+        if (options.delete) args.push('--delete');
+
+        const { stdout, stderr } = await execFilePromise('openclaw', args);
+
+        return {
+          success: true,
+          output: stdout,
+          message: `Channel ${options.channel} removed successfully`
+        };
+      } catch (error) {
+        log.error('Failed to remove channel:', error);
+        return {
+          success: false,
+          error: (error as Error).message,
+          output: ''
+        };
+      }
     });
 
     // Model Management IPC

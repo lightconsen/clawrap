@@ -15,6 +15,10 @@ export interface ElectronAPI {
   setTools: (tools: string[]) => Promise<boolean>;
   getChannels: () => Promise<{ type: string; enabled: boolean }[]>;
   setChannels: (channels: { type: string; enabled: boolean }[]) => Promise<boolean>;
+  // Channels CLI API
+  listChannels: () => Promise<{ success: boolean; output: string; error?: string }>;
+  addChannel: (options: { channel: string; name?: string; token?: string; [key: string]: string | undefined }) => Promise<{ success: boolean; output: string; message?: string; error?: string }>;
+  removeChannel: (options: { channel: string; account?: string; delete?: boolean }) => Promise<{ success: boolean; output: string; message?: string; error?: string }>;
 
   // Model Management API
   getSavedModels: () => Promise<ModelConfig[]>;

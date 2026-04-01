@@ -16,6 +16,41 @@ export interface BypassChannel {
   enabled: boolean;
 }
 
+export interface ChannelAccount {
+  id: string;
+  channel: string;
+  name: string;
+  enabled: boolean;
+  authenticated: boolean;
+}
+
+export interface ChannelListResult {
+  success: boolean;
+  output: string;
+  error?: string;
+  accounts?: ChannelAccount[];
+}
+
+export interface ChannelAddOptions {
+  channel: string;
+  name?: string;
+  token?: string;
+  [key: string]: string | undefined | boolean;
+}
+
+export interface ChannelRemoveOptions {
+  channel: string;
+  account?: string;
+  delete?: boolean;
+}
+
+export interface ChannelOperationResult {
+  success: boolean;
+  output: string;
+  message?: string;
+  error?: string;
+}
+
 export interface ModelConfig {
   id: string;
   name: string;
