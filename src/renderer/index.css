@@ -1395,6 +1395,8 @@ body {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .permission-stat {
@@ -2390,6 +2392,8 @@ body {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Stat Values */
@@ -2407,12 +2411,17 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .stat-label {
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 0;
+  min-width: fit-content;
 }
 
 .stat-value {
@@ -2623,6 +2632,8 @@ body {
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Model List */
