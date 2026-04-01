@@ -72,10 +72,11 @@ export const TEXTS = {
   // Settings View
   settings: {
     title: 'Settings',
-    // New consolidated navigation
+    // Navigation
     dashboard: 'Dashboard',
     permissions: 'Permissions',
     models: 'Models',
+    channels: 'Channels',
     extensions: 'Extensions',
     agent: 'Agent',
     automation: 'Automation',
@@ -91,12 +92,10 @@ export const TEXTS = {
     crons: 'Crons',
     skills: 'Skills',
     tools: 'Tools',
-    channels: 'Channels',
 
     // Extensions sub-tabs
     skillsTab: 'Skills',
     toolsTab: 'Tools',
-    channelsTab: 'Channels',
 
     // Automation sub-tabs
     cronJobsTab: 'Scheduled Jobs',

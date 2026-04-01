@@ -587,32 +587,6 @@ export function SettingsView() {
     </div>
   );
 
-  const renderChannelsSection = () => (
-    <div className="channels-section">
-      <div className="section-header">
-        <h2>{TEXTS.settings.channels}</h2>
-        <p className="subtitle">{TEXTS.channels.subtitle}</p>
-      </div>
-      <div className="channels-grid">
-        {channels.map(channel => {
-          const channelName = (TEXTS.channels as any)[channel.type] || channel.type;
-          return (
-            <div key={channel.type} className={`channel-card ${channel.enabled ? 'enabled' : ''}`}>
-              <label className="channel-toggle">
-                <input
-                  type="checkbox"
-                  checked={channel.enabled}
-                  onChange={() => handleChannelToggle(channel.type)}
-                />
-                <span className="channel-name">{channelName}</span>
-              </label>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   const renderUsageSection = () => (
     <div className="usage-section">
       <div className="section-header">
@@ -1340,7 +1314,7 @@ export function SettingsView() {
     <div className="extensions-section">
       <div className="section-header">
         <h2>{TEXTS.settings.extensions}</h2>
-        <p className="subtitle">Manage skills, tools, and channels</p>
+        <p className="subtitle">Manage skills and tools</p>
       </div>
 
       {/* Tabs */}
@@ -1357,12 +1331,6 @@ export function SettingsView() {
             onClick={() => setExtensionsTab('tools')}
           >
             {TEXTS.settings.toolsTab}
-          </button>
-          <button
-            className={`personality-tab ${extensionsTab === 'channels' ? 'active' : ''}`}
-            onClick={() => setExtensionsTab('channels')}
-          >
-            {TEXTS.settings.channelsTab}
           </button>
         </div>
       </div>
@@ -1502,30 +1470,33 @@ export function SettingsView() {
           </div>
         </div>
       )}
+    </div>
+  );
 
-      {/* Channels Tab */}
-      {extensionsTab === 'channels' && (
-        <div>
-          <div className="section-subheader" style={{ marginBottom: '16px' }}>
-            <h3>{TEXTS.channels.title}</h3>
+  const renderChannelsSection = () => (
+    <div className="channels-section">
+      <div className="section-header">
+        <h2>{TEXTS.settings.channels}</h2>
+        <p className="subtitle">Manage bypass channels for different AI assistants</p>
+      </div>
+      <div className="channels-list">
+        {channels.map(channel => (
+          <div className="channels-list-item" key={channel.type}>
+            <div className="list-item-label">
+              <span className="list-item-name">{channel.type}</span>
+              <span className="list-item-desc">Bypass channel for {channel.type} assistant</span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={channel.enabled}
+                onChange={() => handleChannelToggle(channel.type)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
           </div>
-          <div className="channels-list">
-            {channels.map(channel => (
-              <div className={`channels-list-item ${channel.enabled ? 'enabled' : ''}`} key={channel.type}>
-                <label className="list-item-label">
-                  <input
-                    type="checkbox"
-                    checked={channel.enabled}
-                    onChange={() => handleChannelToggle(channel.type)}
-                  />
-                  <span className="list-item-name">{channel.type}</span>
-                </label>
-                <span className="list-item-status">{channel.enabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 
@@ -2588,7 +2559,7 @@ export function SettingsView() {
             <h1>{TEXTS.settings.title}</h1>
           </div>
           <nav className="settings-nav">
-            {(['dashboard', 'permissions', 'models', 'extensions', 'agent', 'automation', 'gateway', 'about'] as const).map(section => (
+            {(['dashboard', 'permissions', 'models', 'channels', 'extensions', 'agent', 'automation', 'gateway', 'about'] as const).map(section => (
               <button
                 key={section}
                 className={`nav-item ${activeSection === section ? 'active' : ''}`}
@@ -2604,6 +2575,7 @@ export function SettingsView() {
           {activeSection === 'dashboard' && renderDashboardSection()}
           {activeSection === 'permissions' && renderPermissionsSection()}
           {activeSection === 'models' && renderModelsSection()}
+          {activeSection === 'channels' && renderChannelsSection()}
           {activeSection === 'extensions' && renderExtensionsSection()}
           {activeSection === 'agent' && renderAgentMergedSection()}
           {activeSection === 'automation' && renderAutomationSection()}
