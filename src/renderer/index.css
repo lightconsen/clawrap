@@ -2631,10 +2631,71 @@ body {
 .channels-list {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.skills-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  transition: all 0.2s;
+}
+
+.skills-list-item:last-child {
+  border-bottom: none;
+}
+
+.skills-list-item:hover {
+  background: transparent;
+}
+
+.skills-list-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.skills-list-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.skills-list-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.skills-list-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.skills-list-icon-btn:hover {
+  opacity: 1;
+}
+
+.skills-list-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tools-list,
+.channels-list {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.skills-list-item,
 .tools-list-item,
 .channels-list-item {
   display: flex;
@@ -2647,14 +2708,12 @@ body {
   transition: all 0.2s;
 }
 
-.skills-list-item:hover,
 .tools-list-item:hover,
 .channels-list-item:hover {
   background: var(--bg-card);
   border-color: var(--accent-primary);
 }
 
-.skills-list-item.enabled,
 .tools-list-item.enabled,
 .channels-list-item.enabled {
   border-color: var(--success);

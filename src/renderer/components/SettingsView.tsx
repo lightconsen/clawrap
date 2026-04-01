@@ -202,12 +202,12 @@ export function SettingsView() {
   };
 
   const AVAILABLE_SKILLS = [
-    { id: 'everything-claude-code:plan', name: 'Plan' },
-    { id: 'everything-claude-code:tdd', name: 'TDD' },
-    { id: 'everything-claude-code:e2e', name: 'E2E' },
-    { id: 'everything-claude-code:python-review', name: 'Python Review' },
-    { id: 'everything-claude-code:go-review', name: 'Go Review' },
-    { id: 'everything-claude-code:security-reviewer', name: 'Security Reviewer' },
+    { id: 'everything-claude-code:plan', name: 'Plan', description: 'Plan mode for architectural planning' },
+    { id: 'everything-claude-code:tdd', name: 'TDD', description: 'Test-driven development mode' },
+    { id: 'everything-claude-code:e2e', name: 'E2E', description: 'End-to-end testing mode' },
+    { id: 'everything-claude-code:python-review', name: 'Python Review', description: 'Python code review' },
+    { id: 'everything-claude-code:go-review', name: 'Go Review', description: 'Go code review' },
+    { id: 'everything-claude-code:security-reviewer', name: 'Security Reviewer', description: 'Security analysis' },
   ];
 
   const handleSkillToggle = async (skillId: string) => {
@@ -1372,25 +1372,21 @@ export function SettingsView() {
                 skills.map(skillId => {
                   const skillInfo = AVAILABLE_SKILLS.find(s => s.id === skillId);
                   return (
-                    <div className={`skills-list-item enabled`} key={skillId}>
-                      <label className="list-item-label">
-                        <input
-                          type="checkbox"
-                          checked={skills.includes(skillId)}
-                          onChange={() => handleSkillToggle(skillId)}
-                        />
-                        <span className="list-item-name">{skillInfo?.name || skillId}</span>
-                      </label>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span className="list-item-status">Installed</span>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleUninstallSkill(skillId)}
-                          disabled={uninstallingSkill === skillId}
-                        >
-                          {uninstallingSkill === skillId ? '...' : 'Uninstall'}
-                        </button>
+                    <div className="skills-list-item" key={skillId}>
+                      <div className="skills-list-content">
+                        <span className="skills-list-name">{skillInfo?.name || skillId}</span>
+                        {skillInfo?.description && (
+                          <span className="skills-list-desc">{skillInfo.description}</span>
+                        )}
                       </div>
+                      <button
+                        className="skills-list-icon-btn"
+                        onClick={() => handleUninstallSkill(skillId)}
+                        disabled={uninstallingSkill === skillId}
+                        title="Uninstall"
+                      >
+                        {uninstallingSkill === skillId ? '...' : '🗑️'}
+                      </button>
                     </div>
                   );
                 })
@@ -1411,35 +1407,31 @@ export function SettingsView() {
                   hubSkills.map((skill: any) => {
                     const isInstalled = skills.includes(skill.id);
                     return (
-                      <div className={`skills-list-item ${isInstalled ? 'enabled' : ''}`} key={skill.id}>
-                        <div className="list-item-label">
-                          <span className="list-item-name">{skill.name || skill.id}</span>
+                      <div className="skills-list-item" key={skill.id}>
+                        <div className="skills-list-content">
+                          <span className="skills-list-name">{skill.name || skill.id}</span>
                           {skill.description && (
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>{skill.description}</span>
+                            <span className="skills-list-desc">{skill.description}</span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {isInstalled ? (
-                            <>
-                              <span className="list-item-status">Installed</span>
-                              <button
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => handleUninstallSkill(skill.id)}
-                                disabled={uninstallingSkill === skill.id}
-                              >
-                                {uninstallingSkill === skill.id ? '...' : 'Uninstall'}
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              className="btn btn-sm"
-                              onClick={() => handleInstallSkill(skill.id)}
-                              disabled={installingSkill === skill.id}
-                            >
-                              {installingSkill === skill.id ? 'Installing...' : 'Install'}
-                            </button>
-                          )}
-                        </div>
+                        {isInstalled ? (
+                          <button
+                            className="skills-list-icon-btn"
+                            onClick={() => handleUninstallSkill(skill.id)}
+                            disabled={uninstallingSkill === skill.id}
+                            title="Uninstall"
+                          >
+                            {uninstallingSkill === skill.id ? '...' : '🗑️'}
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => handleInstallSkill(skill.id)}
+                            disabled={installingSkill === skill.id}
+                          >
+                            {installingSkill === skill.id ? 'Installing...' : 'Install'}
+                          </button>
+                        )}
                       </div>
                     );
                   })
