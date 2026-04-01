@@ -96,7 +96,11 @@ body {
   background: var(--accent-primary);
   color: var(--bg-primary);
   border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-primary:hover {
@@ -107,6 +111,11 @@ body {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-secondary:hover {
@@ -117,6 +126,11 @@ body {
   background: transparent;
   color: var(--error);
   border: 1px solid var(--error);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-danger:hover {
