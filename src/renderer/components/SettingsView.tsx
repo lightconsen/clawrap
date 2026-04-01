@@ -55,6 +55,8 @@ export function SettingsView() {
   const [installingSkill, setInstallingSkill] = useState<string | null>(null);
   const [uninstallingSkill, setUninstallingSkill] = useState<string | null>(null);
   const [showHubSkills, setShowHubSkills] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
+  const [showSkillDetail, setShowSkillDetail] = useState(false);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -266,6 +268,11 @@ export function SettingsView() {
     } finally {
       setUninstallingSkill(null);
     }
+  };
+
+  const handleViewSkillDetail = (skill: any) => {
+    setSelectedSkill(skill);
+    setShowSkillDetail(true);
   };
 
   const handleEditModel = (modelId: string) => {
@@ -1371,9 +1378,10 @@ export function SettingsView() {
               ) : (
                 skills.map(skillId => {
                   const skillInfo = AVAILABLE_SKILLS.find(s => s.id === skillId);
+                  const skillData = skillInfo || { id: skillId, name: skillId };
                   return (
                     <div className="skills-list-item" key={skillId}>
-                      <div className="skills-list-content">
+                      <div className="skills-list-content" onClick={() => handleViewSkillDetail(skillData)} style={{ cursor: 'pointer' }}>
                         <span className="skills-list-name">{skillInfo?.name || skillId}</span>
                         {skillInfo?.description && (
                           <span className="skills-list-desc">{skillInfo.description}</span>
@@ -1381,7 +1389,7 @@ export function SettingsView() {
                       </div>
                       <button
                         className="skills-list-icon-btn"
-                        onClick={() => handleUninstallSkill(skillId)}
+                        onClick={(e) => { e.stopPropagation(); handleUninstallSkill(skillId); }}
                         disabled={uninstallingSkill === skillId}
                         title="Uninstall"
                       >
@@ -1408,7 +1416,7 @@ export function SettingsView() {
                     const isInstalled = skills.includes(skill.id);
                     return (
                       <div className="skills-list-item" key={skill.id}>
-                        <div className="skills-list-content">
+                        <div className="skills-list-content" onClick={() => handleViewSkillDetail(skill)} style={{ cursor: 'pointer' }}>
                           <span className="skills-list-name">{skill.name || skill.id}</span>
                           {skill.description && (
                             <span className="skills-list-desc">{skill.description}</span>
@@ -1417,7 +1425,7 @@ export function SettingsView() {
                         {isInstalled ? (
                           <button
                             className="skills-list-icon-btn"
-                            onClick={() => handleUninstallSkill(skill.id)}
+                            onClick={(e) => { e.stopPropagation(); handleUninstallSkill(skill.id); }}
                             disabled={uninstallingSkill === skill.id}
                             title="Uninstall"
                           >
@@ -1426,7 +1434,7 @@ export function SettingsView() {
                         ) : (
                           <button
                             className="btn btn-sm"
-                            onClick={() => handleInstallSkill(skill.id)}
+                            onClick={(e) => { e.stopPropagation(); handleInstallSkill(skill.id); }}
                             disabled={installingSkill === skill.id}
                           >
                             {installingSkill === skill.id ? 'Installing...' : 'Install'}
@@ -1436,6 +1444,68 @@ export function SettingsView() {
                     );
                   })
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Skill Detail Modal */}
+          {showSkillDetail && selectedSkill && (
+            <div className="modal-overlay" onClick={() => setShowSkillDetail(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <h2>{selectedSkill.name || selectedSkill.id}</h2>
+                  <button className="modal-close" onClick={() => setShowSkillDetail(false)}>×</button>
+                </div>
+                <div className="modal-body">
+                  <div style={{ marginBottom: '16px' }}>
+                    <strong>ID:</strong>
+                    <div style={{ fontFamily: 'monospace', fontSize: '13px', marginTop: '4px', padding: '8px', background: 'var(--bg-secondary)', borderRadius: '4px' }}>
+                      {selectedSkill.id}
+                    </div>
+                  </div>
+                  {selectedSkill.description && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <strong>Description:</strong>
+                      <p style={{ marginTop: '4px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{selectedSkill.description}</p>
+                    </div>
+                  )}
+                  {selectedSkill.longDescription && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <strong>Details:</strong>
+                      <p style={{ marginTop: '4px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{selectedSkill.longDescription}</p>
+                    </div>
+                  )}
+                  {selectedSkill.author && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <strong>Author:</strong>
+                      <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>{selectedSkill.author}</span>
+                    </div>
+                  )}
+                  {selectedSkill.version && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <strong>Version:</strong>
+                      <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>{selectedSkill.version}</span>
+                    </div>
+                  )}
+                  <div style={{ marginBottom: '16px' }}>
+                    <strong>Status:</strong>
+                    <span style={{ marginLeft: '8px', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', background: skills.includes(selectedSkill.id) ? 'rgba(166, 227, 161, 0.2)' : 'var(--bg-tertiary)', color: skills.includes(selectedSkill.id) ? 'var(--success)' : 'var(--text-secondary)' }}>
+                      {skills.includes(selectedSkill.id) ? 'Installed' : 'Not Installed'}
+                    </span>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-secondary" onClick={() => setShowSkillDetail(false)}>Close</button>
+                  {skills.includes(selectedSkill.id) ? (
+                    <button className="btn btn-danger" onClick={() => { handleUninstallSkill(selectedSkill.id); setShowSkillDetail(false); }}>
+                      {uninstallingSkill === selectedSkill.id ? 'Uninstalling...' : 'Uninstall'}
+                    </button>
+                  ) : (
+                    <button className="btn" onClick={() => { handleInstallSkill(selectedSkill.id); setShowSkillDetail(false); }}>
+                      {installingSkill === selectedSkill.id ? 'Installing...' : 'Install'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
