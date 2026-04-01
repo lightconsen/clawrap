@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Skills Hub API
   fetchSkills: () => debugInvoke('skills:fetch'),
   installSkill: (skillId: string) => debugInvoke('skills:install', skillId),
+  uninstallSkill: (skillId: string) => debugInvoke('skills:uninstall', skillId),
+  installSkillFromZip: () => debugInvoke('skills:installFromZip'),
 
   // Settings API
   getSettingsData: (): Promise<{ config: OpenClawConfig; status: GatewayStatus; installCheck: { installed: boolean; path?: string; version?: string } }> =>
@@ -136,6 +138,8 @@ declare global {
       // Skills Hub API
       fetchSkills: () => Promise<{ success: boolean; data: any[]; error?: string }>;
       installSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+      uninstallSkill: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+      installSkillFromZip: () => Promise<{ success: boolean; skillId?: string | null; skillName?: string; error?: string }>;
       // OAuth API
       oauthStart: (provider: string) => Promise<{ success: boolean; authUrl?: string; error?: string }>;
       oauthGetStatus: (provider: string) => Promise<{ authenticated: boolean; email?: string; expires?: number }>;
