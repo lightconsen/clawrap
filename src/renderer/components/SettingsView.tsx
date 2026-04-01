@@ -777,8 +777,8 @@ export function SettingsView() {
         {/* Network Settings */}
         <div className="permission-settings-block">
           <h3>Network Access</h3>
-          <div className="form-group">
-            <label className="toggle-switch">
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label className="toggle-switch" style={{ margin: 0 }}>
               <input
                 type="checkbox"
                 checked={localPermissionSettings.network.whitelistMode}
@@ -788,8 +788,8 @@ export function SettingsView() {
                 })}
               />
               <span className="toggle-slider"></span>
-              <span style={{ marginLeft: '12px' }}>Whitelist Mode (only allow listed hosts)</span>
             </label>
+            <span style={{ flex: 1 }}>Whitelist Mode (only allow listed hosts)</span>
           </div>
 
           {localPermissionSettings.network.whitelistMode && (
@@ -812,8 +812,8 @@ export function SettingsView() {
         {/* Command Execution Settings */}
         <div className="permission-settings-block">
           <h3>Command Execution</h3>
-          <div className="form-group">
-            <label className="toggle-switch">
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label className="toggle-switch" style={{ margin: 0 }}>
               <input
                 type="checkbox"
                 checked={localPermissionSettings.commands.requireConfirmation}
@@ -823,8 +823,8 @@ export function SettingsView() {
                 })}
               />
               <span className="toggle-slider"></span>
-              <span style={{ marginLeft: '12px' }}>Require confirmation before executing commands</span>
             </label>
+            <span style={{ flex: 1 }}>Require confirmation before executing commands</span>
           </div>
         </div>
 
