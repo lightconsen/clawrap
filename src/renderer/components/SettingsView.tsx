@@ -979,8 +979,8 @@ export function SettingsView() {
           <div className="task-section-block">
             <h3>Reliability Settings</h3>
 
-            <div className="form-group">
-              <label className="toggle-switch">
+            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label className="toggle-switch" style={{ margin: 0 }}>
                 <input
                   type="checkbox"
                   checked={localTaskReliabilitySettings.autoRetry.enabled}
@@ -990,8 +990,8 @@ export function SettingsView() {
                   })}
                 />
                 <span className="toggle-slider"></span>
-                <span style={{ marginLeft: '12px' }}>Enable automatic retry on failure</span>
               </label>
+              <span style={{ flex: 1 }}>Enable automatic retry on failure</span>
             </div>
 
             {localTaskReliabilitySettings.autoRetry.enabled && (
@@ -1062,8 +1062,8 @@ export function SettingsView() {
               />
             </div>
 
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label className="toggle-switch">
+            <div className="form-group" style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label className="toggle-switch" style={{ margin: 0 }}>
                 <input
                   type="checkbox"
                   checked={localTaskReliabilitySettings.notifyOnFailure}
@@ -1073,12 +1073,12 @@ export function SettingsView() {
                   })}
                 />
                 <span className="toggle-slider"></span>
-                <span style={{ marginLeft: '12px' }}>Notify on task failure</span>
               </label>
+              <span style={{ flex: 1 }}>Notify on task failure</span>
             </div>
 
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label className="toggle-switch">
+            <div className="form-group" style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label className="toggle-switch" style={{ margin: 0 }}>
                 <input
                   type="checkbox"
                   checked={localTaskReliabilitySettings.checkpointEnabled}
@@ -1088,8 +1088,8 @@ export function SettingsView() {
                   })}
                 />
                 <span className="toggle-slider"></span>
-                <span style={{ marginLeft: '12px' }}>Enable checkpoint for long-running tasks (experimental)</span>
               </label>
+              <span style={{ flex: 1 }}>Enable checkpoint for long-running tasks (experimental)</span>
             </div>
 
             <button className="btn" onClick={handleSaveReliabilitySettings} disabled={savingSettings} style={{ marginTop: '24px' }}>
